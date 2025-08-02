@@ -341,6 +341,23 @@ public class CommandParser {
             prompt.append("=== OBJECT DATABASE CONTEXT ===\n");
             prompt.append(objContext.getMinimalContext());
             prompt.append("\n");
+            
+            // Add specific object functionality information
+            prompt.append("=== OBJECT FUNCTIONALITY GUIDE ===\n");
+            prompt.append("COLLECTIBLES: Coin (basic collectible), PurpleCoin (special collectible), StarBit (currency), 1Up (extra life)\n");
+            prompt.append("ENEMIES: Goomba (basic enemy), Koopa (shell enemy), KoopaJr (mini boss), HammerBros (ranged enemy)\n");
+            prompt.append("PLATFORMS: Platform (static), MovingPlatform (moves along path), RotatingPlatform (spins), BreakablePlatform (can be destroyed)\n");
+            prompt.append("INTERACTIVE: QuestionBlock (contains items), Switch (activates mechanisms), Door (entrance/exit), Pipe (transport)\n");
+            prompt.append("DECORATIVE: Tree, Flower, Rock, Signboard (visual elements)\n");
+            prompt.append("HAZARDS: Lava (damage), Spike (damage), FireBar (rotating hazard), Thwomp (crushing hazard)\n");
+            prompt.append("POWER-UPS: PowerUpInvincible (temporary invincibility), PowerUpFire (fire ability), PowerUpIce (ice ability)\n");
+            prompt.append("VEHICLES: StarShip (player transport), KoopaJrShip (enemy ship), Airship (large transport)\n");
+            prompt.append("NPCS: LuigiNPC (Luigi character), Kinopio (Toad character), Rosetta (Rosalina character)\n");
+            prompt.append("BOSSES: BossKameck (magic boss), BossKoopa (Koopa boss), BossBowser (final boss)\n");
+            prompt.append("CAMERAS: Camera (viewpoint control), CameraRail (camera path), CameraArea (camera zone)\n");
+            prompt.append("SOUND: SoundObj (audio), SoundArea (sound zone), BgmChangeArea (music change)\n");
+            prompt.append("EFFECTS: ParticleGenerator (visual effects), Light (illumination), Fog (atmosphere)\n");
+            prompt.append("\n");
         } catch (Exception e) {
             // If object database context fails, continue without it
             System.err.println("Failed to load object database context in prompt: " + e.getMessage());
@@ -556,6 +573,9 @@ public class CommandParser {
             String qtyStr = addMatcher.group(1);
             int qty = qtyStr != null ? Integer.parseInt(qtyStr) : 1;
             String objType = addMatcher.group(2).trim();
+            
+            // Clean up object type by removing any positioning keywords that might have been captured
+            objType = cleanObjectType(objType);
 
             Vec3f pos = new Vec3f(0, 0, 0);
             
@@ -870,6 +890,186 @@ public class CommandParser {
      */
     private String formatVector(Vec3f vec) {
         return String.format("(%.1f, %.1f, %.1f)", vec.x, vec.y, vec.z);
+    }
+    
+    /**
+     * Cleans up object type by removing positioning keywords and extra text.
+     * This fixes issues where the regex captures too much text as the object type.
+     */
+    public String cleanObjectType(String objType) {
+        if (objType == null || objType.isEmpty()) {
+            return objType;
+        }
+        
+        // First, handle the specific case where the regex captured too much
+        // This happens when the pattern captures "coins 5 unit" instead of just "coins"
+        String normalized = objType.trim();
+        String lowerNormalized = normalized.toLowerCase();
+        
+        // Check if the object type contains numbers or "unit" - this indicates regex capture error
+        if (lowerNormalized.matches(".*\\d+.*") || lowerNormalized.contains("unit")) {
+            // Extract just the object name part (before any numbers or "unit")
+            String[] parts = lowerNormalized.split("\\s+");
+            for (int i = 0; i < parts.length; i++) {
+                String part = parts[i];
+                // If this part is a number or "unit", stop here and use the previous parts
+                if (part.matches("\\d+") || part.equals("unit") || part.equals("units")) {
+                    if (i > 0) {
+                        // Reconstruct the object name from the parts before the number/unit
+                        StringBuilder objName = new StringBuilder();
+                        for (int j = 0; j < i; j++) {
+                            if (j > 0) objName.append(" ");
+                            objName.append(parts[j]);
+                        }
+                        normalized = objName.toString();
+                        lowerNormalized = normalized.toLowerCase();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Remove common positioning keywords and everything after them
+        String[] positioningKeywords = {
+            "near", "above", "below", "behind", "in front of", "at position", "at"
+        };
+        
+        for (String keyword : positioningKeywords) {
+            int index = lowerNormalized.indexOf(keyword);
+            if (index > 0) {
+                // Return the part before the positioning keyword
+                return objType.substring(0, index).trim();
+            }
+        }
+        
+        // Handle common plural to singular conversions
+        if (lowerNormalized.endsWith("s")) {
+            switch (lowerNormalized) {
+                case "coins":
+                    return "Coin";
+                case "stars":
+                    return "Star";
+                case "goombas":
+                    return "Goomba";
+                case "koopas":
+                    return "Koopa";
+                case "platforms":
+                    return "Platform";
+                case "blocks":
+                    return "Block";
+                case "pipes":
+                    return "Pipe";
+                case "switches":
+                    return "Switch";
+                case "doors":
+                    return "Door";
+                case "springs":
+                    return "Spring";
+                case "checkpoints":
+                    return "Checkpoint";
+                case "flags":
+                    return "Flag";
+                case "goals":
+                    return "Goal";
+                case "bosses":
+                    return "Boss";
+                case "items":
+                    return "Item";
+                case "powerups":
+                    return "PowerUp";
+                case "collectibles":
+                    return "Collectible";
+                case "purplecoins":
+                    return "PurpleCoin";
+                case "starbits":
+                    return "StarBit";
+                case "1ups":
+                case "oneups":
+                    return "1Up";
+                case "enemies":
+                    return "Enemy";
+                case "npcs":
+                    return "NPC";
+                case "vehicles":
+                    return "Vehicle";
+                case "hazards":
+                    return "Hazard";
+                case "effects":
+                    return "Effect";
+                case "cameras":
+                    return "Camera";
+                case "sounds":
+                    return "Sound";
+                default:
+                    // For other plurals, just remove the 's'
+                    if (lowerNormalized.length() > 1) {
+                        return normalized.substring(0, normalized.length() - 1);
+                    }
+            }
+        }
+        
+        // Handle common variations (multi-word names)
+        switch (lowerNormalized) {
+            case "question block":
+            case "questionblock":
+                return "QuestionBlock";
+            case "moving platform":
+            case "movingplatform":
+                return "MovingPlatform";
+            case "rotating platform":
+            case "rotatingplatform":
+                return "RotatingPlatform";
+            case "breakable platform":
+            case "breakableplatform":
+                return "BreakablePlatform";
+            case "power up":
+            case "powerup":
+                return "PowerUp";
+            case "star bit":
+            case "starbit":
+                return "StarBit";
+            case "purple coin":
+            case "purplecoin":
+                return "PurpleCoin";
+            case "hammer bro":
+            case "hammerbro":
+                return "HammerBros";
+            case "koopa jr":
+            case "koopajr":
+                return "KoopaJr";
+            case "boss koopa":
+            case "bosskoopa":
+                return "BossKoopa";
+            case "boss bowser":
+            case "bossbowser":
+                return "BossBowser";
+            case "boss kameck":
+            case "bosskameck":
+                return "BossKameck";
+            case "luigi npc":
+            case "luiginpc":
+                return "LuigiNPC";
+            case "particle generator":
+            case "particlegenerator":
+                return "ParticleGenerator";
+            case "sound obj":
+            case "soundobj":
+                return "SoundObj";
+            case "sound area":
+            case "soundarea":
+                return "SoundArea";
+            case "bgm change area":
+            case "bgmchangearea":
+                return "BgmChangeArea";
+            case "camera rail":
+            case "camerarail":
+                return "CameraRail";
+            case "camera area":
+            case "cameraarea":
+                return "CameraArea";
+        }
+        
+        return normalized;
     }
     
     /**

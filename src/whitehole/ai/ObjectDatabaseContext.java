@@ -286,18 +286,62 @@ public class ObjectDatabaseContext {
         }
         
         StringBuilder sb = new StringBuilder();
-        sb.append("Available object categories: ");
+        sb.append("=== SUPER MARIO GALAXY OBJECT DATABASE ===\n\n");
         
+        // Add categories
         List<CategoryInfo> categories = ObjectDB.getCategories();
-        List<String> categoryNames = categories.stream()
-            .map(CategoryInfo::toString)
-            .collect(Collectors.toList());
-        
-        sb.append(String.join(", ", categoryNames));
+        sb.append("Available Object Categories (").append(categories.size()).append("):\n");
+        for (CategoryInfo category : categories) {
+            sb.append("- ").append(category.toString()).append(": ").append(category.getDescription()).append("\n");
+        }
         sb.append("\n");
         
-        sb.append("Common objects: Coin, Star, Goomba, QuestionBlock, Platform, etc.\n");
-        sb.append("Use object names exactly as shown in the database.\n");
+        // Add popular objects by category with descriptions
+        Map<String, ObjectInfo> allObjects = ObjectDB.getObjectInfos();
+        Map<String, List<ObjectInfo>> objectsByCategory = allObjects.values().stream()
+            .filter(obj -> obj.isValid() && !obj.isUnused() && !obj.isLeftover())
+            .collect(Collectors.groupingBy(ObjectInfo::category));
+        
+        sb.append("Popular Objects by Category:\n");
+        for (Map.Entry<String, List<ObjectInfo>> entry : objectsByCategory.entrySet()) {
+            String category = entry.getKey();
+            List<ObjectInfo> objects = entry.getValue();
+            
+            if (objects.size() > 0) {
+                sb.append("\n").append(category.toUpperCase()).append(" (").append(objects.size()).append(" objects):\n");
+                
+                // Show top 15 most relevant objects per category
+                List<ObjectInfo> topObjects = objects.stream()
+                    .sorted((a, b) -> {
+                        // Sort by relevance: higher progress first, then by name
+                        int progressCompare = Integer.compare(b.progress(), a.progress());
+                        if (progressCompare != 0) return progressCompare;
+                        return a.toString().compareToIgnoreCase(b.toString());
+                    })
+                    .limit(15)
+                    .collect(Collectors.toList());
+                
+                for (ObjectInfo obj : topObjects) {
+                    sb.append("  - ").append(obj.toString())
+                      .append(" (").append(obj.internalName()).append(")")
+                      .append(" - ").append(obj.description())
+                      .append("\n");
+                }
+            }
+        }
+        
+        sb.append("\n=== OBJECT USAGE GUIDELINES ===\n");
+        sb.append("- Use exact object names as shown above (e.g., 'Coin', 'Goomba', 'QuestionBlock')\n");
+        sb.append("- Common collectibles: Coin, PurpleCoin, StarBit, 1Up\n");
+        sb.append("- Common enemies: Goomba, Koopa, KoopaJr, HammerBros\n");
+        sb.append("- Common platforms: Platform, MovingPlatform, RotatingPlatform\n");
+        sb.append("- Common interactive: QuestionBlock, Switch, Door, Pipe\n");
+        sb.append("- Common decorative: Tree, Flower, Rock, Signboard\n");
+        sb.append("- Common hazards: Lava, Spike, FireBar, Thwomp\n");
+        sb.append("- Common power-ups: PowerUpInvincible, PowerUpFire, PowerUpIce\n");
+        sb.append("- Common vehicles: StarShip, KoopaJrShip, Airship\n");
+        sb.append("- Common NPCs: LuigiNPC, Kinopio, Rosetta\n");
+        sb.append("- Common bosses: BossKameck, BossKoopa, BossBowser\n");
         
         return sb.toString();
     }
@@ -344,6 +388,50 @@ public class ObjectDatabaseContext {
         }
         
         return null; // Not found
+    }
+    
+    /**
+     * Gets object name suggestions for similar names.
+     * Useful for helping users find the correct object name.
+     */
+    public List<String> getObjectNameSuggestions(String partialName) {
+        if (!initialized) {
+            initialize();
+        }
+        
+        List<String> suggestions = new ArrayList<>();
+        if (partialName == null || partialName.trim().isEmpty()) {
+            return suggestions;
+        }
+        
+        String searchTerm = partialName.toLowerCase().trim();
+        Map<String, ObjectInfo> allObjects = ObjectDB.getObjectInfos();
+        
+        // Find objects that contain the search term
+        for (ObjectInfo obj : allObjects.values()) {
+            if (obj.isValid() && !obj.isUnused() && !obj.isLeftover()) {
+                String objName = obj.toString().toLowerCase();
+                String internalName = obj.internalName().toLowerCase();
+                
+                if (objName.contains(searchTerm) || internalName.contains(searchTerm)) {
+                    suggestions.add(obj.toString());
+                }
+            }
+        }
+        
+        // Sort by relevance (exact matches first, then alphabetical)
+        suggestions.sort((a, b) -> {
+            boolean aExact = a.toLowerCase().startsWith(searchTerm);
+            boolean bExact = b.toLowerCase().startsWith(searchTerm);
+            
+            if (aExact && !bExact) return -1;
+            if (!aExact && bExact) return 1;
+            
+            return a.compareToIgnoreCase(b);
+        });
+        
+        // Limit to top 10 suggestions
+        return suggestions.stream().limit(10).collect(Collectors.toList());
     }
     
     /**

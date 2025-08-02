@@ -229,10 +229,10 @@ public class SettingsForm extends javax.swing.JDialog {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle(String.format("%s -- Settings", Whitehole.NAME));
-        setBounds(new java.awt.Rectangle(0, 0, 1200, 900));
+        setBounds(new java.awt.Rectangle(0, 0, 1280, 900));
         setIconImage(Whitehole.ICON);
         setMinimumSize(new java.awt.Dimension(800, 600));
-        setPreferredSize(new java.awt.Dimension(1200, 900));
+        setPreferredSize(new java.awt.Dimension(1280, 900));
         setResizable(true);
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
@@ -243,7 +243,7 @@ public class SettingsForm extends javax.swing.JDialog {
 
         pnlSettings.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         pnlSettings.setMinimumSize(new java.awt.Dimension(600, 400));
-        pnlSettings.setPreferredSize(new java.awt.Dimension(1200, 900));
+        pnlSettings.setPreferredSize(new java.awt.Dimension(1280, 900));
         java.awt.GridBagLayout pnlSettingsLayout = new java.awt.GridBagLayout();
         pnlSettingsLayout.columnWeights = new double[] {1.0, 1.0, 1.0, 1.0};
         pnlSettings.setLayout(pnlSettingsLayout);
