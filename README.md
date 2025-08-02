@@ -4,6 +4,8 @@
 
 **Whitehole Geo** is an enhanced level editor for *Super Mario Galaxy* and *Super Mario Galaxy 2* with revolutionary **AI-powered editing capabilities**.
 
+> 🙏 **Built upon [Whitehole-Neo](https://github.com/SMGCommunity/Whitehole-Neo)** by the SMG Community - Enhanced with AI Commands and modern features.
+
 ## ✨ What's New in This Version
 
 ### 🤖 AI Commands (NEW!)
@@ -127,6 +129,23 @@ This comprehensive guide covers:
 - Troubleshooting common issues
 - Development environment setup
 
-## 📄 License
+## � Credits
+
+**Whitehole Geo** is built upon the excellent foundation of **[Whitehole-Neo](https://github.com/SMGCommunity/Whitehole-Neo)** by the SMG Community.
+
+### Original Project
+- **[Whitehole-Neo](https://github.com/SMGCommunity/Whitehole-Neo)** - The base Mario Galaxy level editor
+- **SMG Community** - For maintaining and improving the original Whitehole project
+- **Original Whitehole developers** - For creating the foundational editor
+
+### This Enhanced Version
+- **AI Commands System** - Revolutionary natural language editing interface
+- **Enhanced Camera Controls** - Improved user experience with Shift+drag rotation
+- **Comprehensive Documentation** - Complete installation and usage guides
+- **Modern Build System** - Streamlined compilation and deployment
+
+We extend our gratitude to all the original developers and the SMG Community for their incredible work that made this enhanced version possible.
+
+## �📄 License
 
 This project maintains the same license as the original Whitehole project.
