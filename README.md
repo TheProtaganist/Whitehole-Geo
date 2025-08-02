@@ -129,7 +129,7 @@ This comprehensive guide covers:
 - Troubleshooting common issues
 - Development environment setup
 
-## � Credits
+## Credits
 
 **Whitehole Geo** is built upon the excellent foundation of **[Whitehole-Neo](https://github.com/SMGCommunity/Whitehole-Neo)** by the SMG Community.
 
@@ -146,6 +146,6 @@ This comprehensive guide covers:
 
 We extend our gratitude to all the original developers and the SMG Community for their incredible work that made this enhanced version possible.
 
-## �📄 License
+## 📄 License
 
 This project maintains the same license as the original Whitehole project.
