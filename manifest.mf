@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Main-Class: whitehole.Whitehole
+Class-Path: lib/byte-buddy-1.14.10.jar lib/byte-buddy-agent-1.14.10.jar lib/flatlaf-2.1.jar lib/gluegen-rt.jar lib/jogamp-fat.jar lib/json-20201115.jar lib/junit-jupiter-api-5.9.2.jar lib/junit-jupiter-engine-5.9.2.jar lib/junit-platform-commons-1.9.2.jar lib/junit-platform-console-standalone-1.9.2.jar lib/junit-platform-engine-1.9.2.jar lib/junit-platform-launcher-1.9.2.jar lib/JWindowsFileDialog-0.81.jar lib/mockito-core-5.8.0.jar lib/objenesis-3.3.jar
+

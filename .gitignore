@@ -1,0 +1,67 @@
+# Build output
+/build/
+/dist/
+/nbproject/private/
+
+# Compiled class files
+*.class
+build/classes/
+build/classes/**/*
+
+# JAR files (exclude from source distribution, but keep lib dependencies)
+*.jar
+!lib/*.jar
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# NetBeans specific
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+# Manifest (auto-generated)
+src/META-INF/MANIFEST.MF
+
+# Data files that might be user-modified
+# data/objectdb.json  # Commented out - keeping this in source
+
+# Log files
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# AI configuration (may contain API keys)
+ai_config.json
+
+# User-specific settings
+user_settings.json
+
+# Test output
+test-output/
+
+# Backup files
+*.backup
+*.bak
+
+# Windows batch file output
+*.bat.log
