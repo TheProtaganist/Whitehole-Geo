@@ -25,12 +25,14 @@ import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
 import java.util.List;
+import java.util.Map;
 import javax.swing.SwingWorker;
 
 /**
@@ -56,11 +58,19 @@ public class AICommandPanel extends JPanel {
     private JProgressBar progressBar;
     private JLabel lblConnectionStatus;
     
+    // Enhanced UI Components for command management
+    private JList<String> listFavorites;
+    private DefaultListModel<String> favoritesModel;
+    private JButton btnAddToFavorites;
+    private JButton btnRemoveFromFavorites;
+    
     // Command processing
     private SwingWorker<Void, String> currentTask;
     private final List<String> commandHistory = new ArrayList<>();
+    private final List<String> favoriteCommands = new ArrayList<>();
     private int historyIndex = -1;
     private final List<String> suggestions = new ArrayList<>();
+    private javax.swing.Timer connectionStatusTimer;
     
     // Auto-completion data - Common command patterns
     private static final String[] COMMAND_TEMPLATES = {
@@ -130,7 +140,9 @@ public class AICommandPanel extends JPanel {
         initializeComponents();
         setupEventHandlers();
         loadCommandHistory();
+        loadFavoriteCommands();
         updateConnectionStatus();
+        startConnectionStatusMonitoring();
     }
     
     private void initializeComponents() {
@@ -138,11 +150,11 @@ public class AICommandPanel extends JPanel {
         setBorder(new TitledBorder("AI Commands"));
         
         // Create main panels
-        JPanel topPanel = createInputPanel();
+        JPanel inputPanel = createInputPanel();
         JPanel centerPanel = createStatusPanel();
-        JPanel bottomPanel = createHistoryPanel();
+        JPanel bottomPanel = createHistoryAndFavoritesPanel();
         
-        add(topPanel, BorderLayout.NORTH);
+        add(inputPanel, BorderLayout.NORTH);
         add(centerPanel, BorderLayout.CENTER);
         add(bottomPanel, BorderLayout.SOUTH);
     }
@@ -238,21 +250,66 @@ public class AICommandPanel extends JPanel {
         return panel;
     }
     
-    private JPanel createHistoryPanel() {
+    private JPanel createHistoryAndFavoritesPanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Command History"));
-        panel.setPreferredSize(new Dimension(0, 120));
+        panel.setPreferredSize(new Dimension(0, 140));
         
-        // History list
+        // Create tabbed pane for history and favorites
+        JTabbedPane tabbedPane = new JTabbedPane();
+        
+        // History tab
+        JPanel historyPanel = new JPanel(new BorderLayout());
         historyModel = new DefaultListModel<>();
         listHistory = new JList<>(historyModel);
         listHistory.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         listHistory.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
+        listHistory.setToolTipText("Double-click to reuse a command from history");
         
         JScrollPane scrollHistory = new JScrollPane(listHistory);
-        scrollHistory.setPreferredSize(new Dimension(0, 100));
+        historyPanel.add(scrollHistory, BorderLayout.CENTER);
         
-        panel.add(scrollHistory, BorderLayout.CENTER);
+        // History buttons
+        JPanel historyButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 2));
+        btnAddToFavorites = new JButton("Add to Favorites");
+        btnAddToFavorites.setToolTipText("Add selected command to favorites");
+        btnAddToFavorites.setEnabled(false);
+        historyButtonPanel.add(btnAddToFavorites);
+        
+        JButton btnClearHistory = new JButton("Clear");
+        btnClearHistory.setToolTipText("Clear command history");
+        btnClearHistory.addActionListener(e -> clearHistory());
+        historyButtonPanel.add(btnClearHistory);
+        
+        historyPanel.add(historyButtonPanel, BorderLayout.SOUTH);
+        tabbedPane.addTab("History", historyPanel);
+        
+        // Favorites tab
+        JPanel favoritesPanel = new JPanel(new BorderLayout());
+        favoritesModel = new DefaultListModel<>();
+        listFavorites = new JList<>(favoritesModel);
+        listFavorites.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        listFavorites.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
+        listFavorites.setToolTipText("Double-click to use a favorite command");
+        
+        JScrollPane scrollFavorites = new JScrollPane(listFavorites);
+        favoritesPanel.add(scrollFavorites, BorderLayout.CENTER);
+        
+        // Favorites buttons
+        JPanel favoritesButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 2));
+        btnRemoveFromFavorites = new JButton("Remove");
+        btnRemoveFromFavorites.setToolTipText("Remove selected command from favorites");
+        btnRemoveFromFavorites.setEnabled(false);
+        favoritesButtonPanel.add(btnRemoveFromFavorites);
+        
+        JButton btnClearFavorites = new JButton("Clear");
+        btnClearFavorites.setToolTipText("Clear all favorite commands");
+        btnClearFavorites.addActionListener(e -> clearFavorites());
+        favoritesButtonPanel.add(btnClearFavorites);
+        
+        favoritesPanel.add(favoritesButtonPanel, BorderLayout.SOUTH);
+        tabbedPane.addTab("Favorites", favoritesPanel);
+        
+        panel.add(tabbedPane, BorderLayout.CENTER);
         
         return panel;
     }
@@ -294,6 +351,36 @@ public class AICommandPanel extends JPanel {
                 }
             }
         });
+        
+        listHistory.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                btnAddToFavorites.setEnabled(listHistory.getSelectedValue() != null);
+            }
+        });
+        
+        // Favorites selection handler
+        listFavorites.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    String selected = listFavorites.getSelectedValue();
+                    if (selected != null) {
+                        txtCommand.setText(selected);
+                        txtCommand.requestFocus();
+                    }
+                }
+            }
+        });
+        
+        listFavorites.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                btnRemoveFromFavorites.setEnabled(listFavorites.getSelectedValue() != null);
+            }
+        });
+        
+        // Favorites management handlers
+        btnAddToFavorites.addActionListener(e -> addToFavorites());
+        btnRemoveFromFavorites.addActionListener(e -> removeFromFavorites());
         
         // Focus handler to update suggestions
         txtCommand.addFocusListener(new FocusAdapter() {
@@ -357,10 +444,18 @@ public class AICommandPanel extends JPanel {
     private void updateConnectionStatus() {
         SwingUtilities.invokeLater(() -> {
             try {
-                boolean connected = AIProviderManager.getInstance().isCurrentProviderAvailable();
+                AIProviderManager manager = AIProviderManager.getInstance();
+                boolean connected = manager.isCurrentProviderAvailable();
+                String providerName = manager.getCurrentProviderName();
+                
                 lblConnectionStatus.setForeground(connected ? Color.GREEN : Color.RED);
-                lblConnectionStatus.setToolTipText(connected ? 
-                    "AI Provider Connected" : "AI Provider Unavailable - Check settings");
+                lblConnectionStatus.setToolTipText(String.format("%s: %s - %s", 
+                    providerName,
+                    connected ? "Connected" : "Unavailable",
+                    connected ? "Click to refresh" : "Check settings"));
+                
+
+                
             } catch (Exception e) {
                 lblConnectionStatus.setForeground(Color.RED);
                 lblConnectionStatus.setToolTipText("AI Provider Error: " + e.getMessage());
@@ -794,15 +889,123 @@ public class AICommandPanel extends JPanel {
     }
     
     private void loadCommandHistory() {
-        // Load from settings if available
-        // For now, just initialize with empty history
         commandHistory.clear();
         historyModel.clear();
+        
+        String historyStr = java.util.prefs.Preferences.userRoot().get("whitehole_aiCommandHistory", "");
+        if (!historyStr.isEmpty()) {
+            String[] commands = historyStr.split("\n");
+            for (String command : commands) {
+                if (!command.trim().isEmpty()) {
+                    commandHistory.add(command);
+                }
+            }
+            
+            // Update UI (show most recent first)
+            for (int i = commandHistory.size() - 1; i >= 0; i--) {
+                historyModel.addElement(commandHistory.get(i));
+            }
+        }
     }
     
     private void saveCommandHistory() {
-        // Save to settings
-        // Implementation would depend on Settings class structure
+        // Save command history to preferences
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < commandHistory.size(); i++) {
+            if (i > 0) sb.append("\n");
+            sb.append(commandHistory.get(i));
+        }
+        java.util.prefs.Preferences.userRoot().put("whitehole_aiCommandHistory", sb.toString());
+    }
+    
+    private void loadFavoriteCommands() {
+        favoriteCommands.clear();
+        favoritesModel.clear();
+        
+        String favoritesStr = java.util.prefs.Preferences.userRoot().get("whitehole_aiFavoriteCommands", "");
+        if (!favoritesStr.isEmpty()) {
+            String[] favorites = favoritesStr.split("\n");
+            for (String favorite : favorites) {
+                if (!favorite.trim().isEmpty()) {
+                    favoriteCommands.add(favorite);
+                    favoritesModel.addElement(favorite);
+                }
+            }
+        }
+    }
+    
+    private void saveFavoriteCommands() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < favoriteCommands.size(); i++) {
+            if (i > 0) sb.append("\n");
+            sb.append(favoriteCommands.get(i));
+        }
+        java.util.prefs.Preferences.userRoot().put("whitehole_aiFavoriteCommands", sb.toString());
+    }
+    
+
+    
+
+    
+    private void addToFavorites() {
+        String selected = listHistory.getSelectedValue();
+        if (selected != null && !favoriteCommands.contains(selected)) {
+            favoriteCommands.add(selected);
+            favoritesModel.addElement(selected);
+            saveFavoriteCommands();
+            appendStatus("Added to favorites: " + selected);
+        }
+    }
+    
+    private void removeFromFavorites() {
+        String selected = listFavorites.getSelectedValue();
+        if (selected != null) {
+            favoriteCommands.remove(selected);
+            favoritesModel.removeElement(selected);
+            saveFavoriteCommands();
+            appendStatus("Removed from favorites: " + selected);
+        }
+    }
+    
+    private void clearHistory() {
+        int result = JOptionPane.showConfirmDialog(this, 
+            "Are you sure you want to clear the command history?", 
+            "Clear History", 
+            JOptionPane.YES_NO_OPTION);
+        
+        if (result == JOptionPane.YES_OPTION) {
+            commandHistory.clear();
+            historyModel.clear();
+            saveCommandHistory();
+            appendStatus("Command history cleared");
+        }
+    }
+    
+    private void clearFavorites() {
+        int result = JOptionPane.showConfirmDialog(this, 
+            "Are you sure you want to clear all favorite commands?", 
+            "Clear Favorites", 
+            JOptionPane.YES_NO_OPTION);
+        
+        if (result == JOptionPane.YES_OPTION) {
+            favoriteCommands.clear();
+            favoritesModel.clear();
+            saveFavoriteCommands();
+            appendStatus("Favorite commands cleared");
+        }
+    }
+    
+    private void startConnectionStatusMonitoring() {
+        // Update connection status every 30 seconds
+        connectionStatusTimer = new javax.swing.Timer(30000, e -> updateConnectionStatus());
+        connectionStatusTimer.start();
+    }
+    
+    private void stopConnectionStatusMonitoring() {
+        if (connectionStatusTimer != null) {
+            connectionStatusTimer.stop();
+            connectionStatusTimer = null;
+        }
     }
     
     /**
@@ -886,5 +1089,52 @@ public class AICommandPanel extends JPanel {
     private String formatVector(Vec3f vec) {
         if (vec == null) return "unknown";
         return String.format("(%.1f, %.1f, %.1f)", vec.x, vec.y, vec.z);
+    }
+    
+    /**
+     * Cleanup method to be called when the panel is disposed.
+     */
+    public void cleanup() {
+        stopConnectionStatusMonitoring();
+        if (currentTask != null && !currentTask.isDone()) {
+            currentTask.cancel(true);
+        }
+    }
+    
+    /**
+     * Gets the current provider status for external use.
+     */
+    public String getCurrentProviderStatusText() {
+        AIProviderManager manager = AIProviderManager.getInstance();
+        return String.format("%s: %s", 
+            manager.getCurrentProviderName(),
+            manager.isCurrentProviderAvailable() ? "Available" : "Unavailable");
+    }
+    
+
+    
+    /**
+     * Adds a command to favorites programmatically.
+     */
+    public void addCommandToFavorites(String command) {
+        if (command != null && !command.trim().isEmpty() && !favoriteCommands.contains(command)) {
+            favoriteCommands.add(command);
+            favoritesModel.addElement(command);
+            saveFavoriteCommands();
+        }
+    }
+    
+    /**
+     * Gets the list of favorite commands.
+     */
+    public List<String> getFavoriteCommands() {
+        return new ArrayList<>(favoriteCommands);
+    }
+    
+    /**
+     * Gets the command history.
+     */
+    public List<String> getCommandHistory() {
+        return new ArrayList<>(commandHistory);
     }
 }

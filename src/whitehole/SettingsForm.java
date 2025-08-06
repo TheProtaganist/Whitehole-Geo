@@ -111,6 +111,7 @@ public class SettingsForm extends javax.swing.JDialog {
                 try {
                     Settings.setActiveAIProvider(Settings.AIProviderType.GEMINI);
                     AIProviderManager.getInstance().refreshConfiguration();
+                    refreshAIProviderPanel();
                     System.out.println("Switched to Gemini AI provider");
                 } catch (Exception ex) {
                     System.err.println("Failed to switch to Gemini provider: " + ex.getMessage());
@@ -130,6 +131,7 @@ public class SettingsForm extends javax.swing.JDialog {
                 try {
                     Settings.setActiveAIProvider(Settings.AIProviderType.OLLAMA);
                     AIProviderManager.getInstance().refreshConfiguration();
+                    refreshAIProviderPanel();
                     System.out.println("Switched to Ollama AI provider");
                 } catch (Exception ex) {
                     System.err.println("Failed to switch to Ollama provider: " + ex.getMessage());
@@ -137,11 +139,77 @@ public class SettingsForm extends javax.swing.JDialog {
             }
         });
         
+        javax.swing.JRadioButton rbOpenRouter = new javax.swing.JRadioButton("OpenRouter");
+        rbOpenRouter.setSelected(Settings.getActiveAIProvider() == Settings.AIProviderType.OPENROUTER);
+        rbOpenRouter.setToolTipText("<html><b>OpenRouter</b><br/>" +
+                                   "Access to multiple AI models with one API key.<br/>" +
+                                   "Includes Claude, GPT-4, Llama, and more.<br/>" +
+                                   "Best for: Model variety and cost-effective access.<br/>" +
+                                   "Setup: Get API key from openrouter.ai</html>");
+        rbOpenRouter.addActionListener(e -> {
+            if (rbOpenRouter.isSelected()) {
+                try {
+                    Settings.setActiveAIProvider(Settings.AIProviderType.OPENROUTER);
+                    AIProviderManager.getInstance().refreshConfiguration();
+                    refreshAIProviderPanel();
+                    System.out.println("Switched to OpenRouter AI provider");
+                } catch (Exception ex) {
+                    System.err.println("Failed to switch to OpenRouter provider: " + ex.getMessage());
+                }
+            }
+        });
+        
+        javax.swing.JRadioButton rbOpenAI = new javax.swing.JRadioButton("OpenAI");
+        rbOpenAI.setSelected(Settings.getActiveAIProvider() == Settings.AIProviderType.OPENAI);
+        rbOpenAI.setToolTipText("<html><b>OpenAI GPT</b><br/>" +
+                               "High-quality GPT models from OpenAI.<br/>" +
+                               "Excellent for complex reasoning tasks.<br/>" +
+                               "Best for: Advanced language understanding.<br/>" +
+                               "Setup: Get API key from platform.openai.com</html>");
+        rbOpenAI.addActionListener(e -> {
+            if (rbOpenAI.isSelected()) {
+                try {
+                    Settings.setActiveAIProvider(Settings.AIProviderType.OPENAI);
+                    AIProviderManager.getInstance().refreshConfiguration();
+                    refreshAIProviderPanel();
+                    System.out.println("Switched to OpenAI AI provider");
+                } catch (Exception ex) {
+                    System.err.println("Failed to switch to OpenAI provider: " + ex.getMessage());
+                }
+            }
+        });
+        
+        javax.swing.JRadioButton rbClaude = new javax.swing.JRadioButton("Claude");
+        rbClaude.setSelected(Settings.getActiveAIProvider() == Settings.AIProviderType.CLAUDE);
+        rbClaude.setToolTipText("<html><b>Anthropic Claude</b><br/>" +
+                               "Excellent reasoning and analysis capabilities.<br/>" +
+                               "Strong safety features and context understanding.<br/>" +
+                               "Best for: Complex analysis and reasoning tasks.<br/>" +
+                               "Setup: Get API key from console.anthropic.com</html>");
+        rbClaude.addActionListener(e -> {
+            if (rbClaude.isSelected()) {
+                try {
+                    Settings.setActiveAIProvider(Settings.AIProviderType.CLAUDE);
+                    AIProviderManager.getInstance().refreshConfiguration();
+                    refreshAIProviderPanel();
+                    System.out.println("Switched to Claude AI provider");
+                } catch (Exception ex) {
+                    System.err.println("Failed to switch to Claude provider: " + ex.getMessage());
+                }
+            }
+        });
+        
         providerGroup.add(rbGemini);
         providerGroup.add(rbOllama);
+        providerGroup.add(rbOpenRouter);
+        providerGroup.add(rbOpenAI);
+        providerGroup.add(rbClaude);
         
         panel.add(rbGemini);
         panel.add(rbOllama);
+        panel.add(rbOpenRouter);
+        panel.add(rbOpenAI);
+        panel.add(rbClaude);
         
         // Status label
         javax.swing.JLabel lblStatus = new javax.swing.JLabel();
@@ -1107,4 +1175,31 @@ public class SettingsForm extends javax.swing.JDialog {
     private javax.swing.JPanel pnlSettings;
     private javax.swing.JTextField txtBaseGame;
     // End of variables declaration//GEN-END:variables
+    
+    /**
+     * Refreshes the AI provider panel to show the currently selected provider's settings.
+     */
+    private void refreshAIProviderPanel() {
+        try {
+            // Remove the old AI model panel
+            pnlAI.removeAll();
+            
+            // Create provider selection panel (always shown)
+            JPanel providerSelectionPanel = createProviderSelectionPanel();
+            pnlAI.add(providerSelectionPanel, java.awt.BorderLayout.NORTH);
+            
+            // Create new AI model selector for current provider
+            aiModelSelector = new AIModelSelector(AIProviderManager.getInstance());
+            JPanel modelPanel = aiModelSelector.createCombinedModelPanel();
+            pnlAI.add(modelPanel, java.awt.BorderLayout.CENTER);
+            
+            // Refresh the panel
+            pnlAI.revalidate();
+            pnlAI.repaint();
+            
+        } catch (Exception e) {
+            System.err.println("Failed to refresh AI provider panel: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 }

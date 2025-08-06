@@ -18,6 +18,7 @@ build/classes/**/*
 *.ipr
 *.iws
 .vscode/
+.kiro
 
 # NetBeans specific
 /nbbuild/

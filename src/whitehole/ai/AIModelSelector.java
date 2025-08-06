@@ -18,6 +18,9 @@ package whitehole.ai;
 
 import whitehole.ai.providers.GeminiProvider;
 import whitehole.ai.providers.OllamaProvider;
+import whitehole.ai.providers.OpenRouterProvider;
+import whitehole.ai.providers.OpenAIProvider;
+import whitehole.ai.providers.ClaudeProvider;
 import whitehole.Settings;
 import javax.swing.*;
 import java.awt.*;
@@ -28,17 +31,26 @@ import java.util.Map;
 
 /**
  * Utility class for creating AI model selection UI components.
- * Provides dropdowns for Gemini and Ollama model selection with dynamic model discovery.
+ * Provides dropdowns for all AI providers with dynamic model discovery.
  */
 public class AIModelSelector {
     
     private final AIProviderManager providerManager;
     private JComboBox<String> geminiModelCombo;
     private JComboBox<String> ollamaModelCombo;
+    private JComboBox<String> openRouterModelCombo;
+    private JComboBox<String> openAIModelCombo;
+    private JComboBox<String> claudeModelCombo;
     private JButton refreshGeminiButton;
     private JButton refreshOllamaButton;
+    private JButton refreshOpenRouterButton;
+    private JButton refreshOpenAIButton;
+    private JButton refreshClaudeButton;
     private JButton testGeminiButton;
     private JButton testOllamaButton;
+    private JButton testOpenRouterButton;
+    private JButton testOpenAIButton;
+    private JButton testClaudeButton;
     
     public AIModelSelector(AIProviderManager providerManager) {
         this.providerManager = providerManager;
@@ -284,21 +296,226 @@ public class AIModelSelector {
     }
     
     /**
-     * Creates a combined panel with both provider model selections.
+     * Creates a panel with OpenRouter model selection controls.
+     */
+    public JPanel createOpenRouterModelPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("OpenRouter Models"));
+        
+        // API Key panel
+        JPanel apiKeyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JLabel apiKeyLabel = new JLabel("API Key:");
+        apiKeyLabel.setToolTipText("<html><b>OpenRouter API Key</b><br/>" +
+                                  "Get your API key from:<br/>" +
+                                  "https://openrouter.ai/keys</html>");
+        JPasswordField apiKeyField = new JPasswordField(30);
+        apiKeyField.setText(Settings.getOpenRouterApiKey());
+        apiKeyField.setToolTipText("<html><b>OpenRouter API Key</b><br/>" +
+                                  "Enter your OpenRouter API key here.<br/>" +
+                                  "OpenRouter provides access to multiple AI models.<br/><br/>" +
+                                  "<b>To get an API key:</b><br/>" +
+                                  "1. Visit https://openrouter.ai<br/>" +
+                                  "2. Create an account<br/>" +
+                                  "3. Go to Keys section<br/>" +
+                                  "4. Create a new API key</html>");
+        
+        JButton saveKeyButton = new JButton("Save Key");
+        saveKeyButton.addActionListener(e -> {
+            String apiKey = new String(apiKeyField.getPassword());
+            Settings.setOpenRouterApiKey(apiKey);
+            configureOpenRouterProvider();
+            JOptionPane.showMessageDialog(panel, "API key saved!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            refreshOpenRouterModels();
+        });
+        
+        apiKeyPanel.add(apiKeyLabel);
+        apiKeyPanel.add(apiKeyField);
+        apiKeyPanel.add(saveKeyButton);
+        
+        // Model selection panel
+        JPanel modelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        openRouterModelCombo = new JComboBox<>();
+        openRouterModelCombo.setPreferredSize(new Dimension(300, 25));
+        openRouterModelCombo.addActionListener(e -> {
+            String selectedModel = (String) openRouterModelCombo.getSelectedItem();
+            if (selectedModel != null && !selectedModel.startsWith("Error")) {
+                Settings.setSelectedOpenRouterModel(selectedModel);
+                configureOpenRouterProvider();
+            }
+        });
+        
+        refreshOpenRouterButton = new JButton("Refresh Models");
+        refreshOpenRouterButton.addActionListener(e -> refreshOpenRouterModels());
+        
+        testOpenRouterButton = new JButton("Test Connection");
+        testOpenRouterButton.addActionListener(e -> testOpenRouterConnection());
+        
+        modelPanel.add(new JLabel("Model:"));
+        modelPanel.add(openRouterModelCombo);
+        modelPanel.add(refreshOpenRouterButton);
+        modelPanel.add(testOpenRouterButton);
+        
+        panel.add(apiKeyPanel, BorderLayout.NORTH);
+        panel.add(modelPanel, BorderLayout.CENTER);
+        
+        refreshOpenRouterModels();
+        return panel;
+    }
+    
+    /**
+     * Creates a panel with OpenAI model selection controls.
+     */
+    public JPanel createOpenAIModelPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("OpenAI Models"));
+        
+        // API Key panel
+        JPanel apiKeyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JLabel apiKeyLabel = new JLabel("API Key:");
+        JPasswordField apiKeyField = new JPasswordField(30);
+        apiKeyField.setText(Settings.getOpenAIApiKey());
+        
+        JButton saveKeyButton = new JButton("Save Key");
+        saveKeyButton.addActionListener(e -> {
+            String apiKey = new String(apiKeyField.getPassword());
+            Settings.setOpenAIApiKey(apiKey);
+            configureOpenAIProvider();
+            JOptionPane.showMessageDialog(panel, "API key saved!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            refreshOpenAIModels();
+        });
+        
+        apiKeyPanel.add(apiKeyLabel);
+        apiKeyPanel.add(apiKeyField);
+        apiKeyPanel.add(saveKeyButton);
+        
+        // Model selection panel
+        JPanel modelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        openAIModelCombo = new JComboBox<>();
+        openAIModelCombo.setPreferredSize(new Dimension(250, 25));
+        openAIModelCombo.addActionListener(e -> {
+            String selectedModel = (String) openAIModelCombo.getSelectedItem();
+            if (selectedModel != null && !selectedModel.startsWith("Error")) {
+                Settings.setSelectedOpenAIModel(selectedModel);
+                configureOpenAIProvider();
+            }
+        });
+        
+        refreshOpenAIButton = new JButton("Refresh Models");
+        refreshOpenAIButton.addActionListener(e -> refreshOpenAIModels());
+        
+        testOpenAIButton = new JButton("Test Connection");
+        testOpenAIButton.addActionListener(e -> testOpenAIConnection());
+        
+        modelPanel.add(new JLabel("Model:"));
+        modelPanel.add(openAIModelCombo);
+        modelPanel.add(refreshOpenAIButton);
+        modelPanel.add(testOpenAIButton);
+        
+        panel.add(apiKeyPanel, BorderLayout.NORTH);
+        panel.add(modelPanel, BorderLayout.CENTER);
+        
+        refreshOpenAIModels();
+        return panel;
+    }
+    
+    /**
+     * Creates a panel with Claude model selection controls.
+     */
+    public JPanel createClaudeModelPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Claude Models"));
+        
+        // API Key panel
+        JPanel apiKeyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JLabel apiKeyLabel = new JLabel("API Key:");
+        JPasswordField apiKeyField = new JPasswordField(30);
+        apiKeyField.setText(Settings.getClaudeApiKey());
+        
+        JButton saveKeyButton = new JButton("Save Key");
+        saveKeyButton.addActionListener(e -> {
+            String apiKey = new String(apiKeyField.getPassword());
+            Settings.setClaudeApiKey(apiKey);
+            configureClaudeProvider();
+            JOptionPane.showMessageDialog(panel, "API key saved!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            refreshClaudeModels();
+        });
+        
+        apiKeyPanel.add(apiKeyLabel);
+        apiKeyPanel.add(apiKeyField);
+        apiKeyPanel.add(saveKeyButton);
+        
+        // Model selection panel
+        JPanel modelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        claudeModelCombo = new JComboBox<>();
+        claudeModelCombo.setPreferredSize(new Dimension(250, 25));
+        claudeModelCombo.addActionListener(e -> {
+            String selectedModel = (String) claudeModelCombo.getSelectedItem();
+            if (selectedModel != null && !selectedModel.startsWith("Error")) {
+                Settings.setSelectedClaudeModel(selectedModel);
+                configureClaudeProvider();
+            }
+        });
+        
+        refreshClaudeButton = new JButton("Refresh Models");
+        refreshClaudeButton.addActionListener(e -> refreshClaudeModels());
+        
+        testClaudeButton = new JButton("Test Connection");
+        testClaudeButton.addActionListener(e -> testClaudeConnection());
+        
+        modelPanel.add(new JLabel("Model:"));
+        modelPanel.add(claudeModelCombo);
+        modelPanel.add(refreshClaudeButton);
+        modelPanel.add(testClaudeButton);
+        
+        panel.add(apiKeyPanel, BorderLayout.NORTH);
+        panel.add(modelPanel, BorderLayout.CENTER);
+        
+        refreshClaudeModels();
+        return panel;
+    }
+    
+    /**
+     * Creates a panel showing only the currently selected provider's settings.
      */
     public JPanel createCombinedModelPanel() {
         JPanel mainPanel = new JPanel(new BorderLayout());
         
-        JPanel geminiPanel = createGeminiModelPanel();
-        JPanel ollamaPanel = createOllamaModelPanel();
+        // Show only the currently selected provider's panel
+        Settings.AIProviderType currentProvider = Settings.getActiveAIProvider();
+        JPanel providerPanel;
         
-        JPanel providersPanel = new JPanel(new GridLayout(2, 1, 5, 5));
-        providersPanel.add(geminiPanel);
-        providersPanel.add(ollamaPanel);
+        switch (currentProvider) {
+            case GEMINI:
+                providerPanel = createGeminiModelPanel();
+                break;
+            case OLLAMA:
+                providerPanel = createOllamaModelPanel();
+                break;
+            case OPENROUTER:
+                providerPanel = createOpenRouterModelPanel();
+                break;
+            case OPENAI:
+                providerPanel = createOpenAIModelPanel();
+                break;
+            case CLAUDE:
+                providerPanel = createClaudeModelPanel();
+                break;
+            default:
+                providerPanel = createGeminiModelPanel();
+                break;
+        }
         
-        mainPanel.add(providersPanel, BorderLayout.CENTER);
+        mainPanel.add(providerPanel, BorderLayout.CENTER);
         
         return mainPanel;
+    }
+    
+    /**
+     * Refreshes the combined panel to show the currently selected provider.
+     */
+    public void refreshForCurrentProvider() {
+        // This method can be called when the provider selection changes
+        // The parent container should recreate the panel
     }
     
     /**
@@ -444,6 +661,9 @@ public class AIModelSelector {
      */
     private void updateOllamaModel(String modelName) {
         try {
+            // Save the selected model to settings
+            Settings.setSelectedOllamaModel(modelName);
+            
             OllamaProvider provider = (OllamaProvider) providerManager.getProvider(Settings.AIProviderType.OLLAMA);
             if (provider != null) {
                 provider.setModel(modelName);
@@ -586,5 +806,299 @@ public class AIModelSelector {
         } catch (Exception e) {
             return "Error: " + e.getMessage();
         }
+    }
+    
+    /**
+     * Refreshes the OpenRouter models dropdown.
+     */
+    private void refreshOpenRouterModels() {
+        SwingUtilities.invokeLater(() -> {
+            refreshOpenRouterButton.setEnabled(false);
+            refreshOpenRouterButton.setText("Loading...");
+        });
+        
+        new Thread(() -> {
+            try {
+                EnhancedAIProvider provider = providerManager.getEnhancedProvider(Settings.AIProviderType.OPENROUTER);
+                if (provider != null && provider.isAvailable()) {
+                    EnhancedAIProvider.ModelInfo[] models = provider.getAvailableModels();
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        openRouterModelCombo.removeAllItems();
+                        for (EnhancedAIProvider.ModelInfo model : models) {
+                            openRouterModelCombo.addItem(model.getId());
+                        }
+                        openRouterModelCombo.setSelectedItem(Settings.getSelectedOpenRouterModel());
+                    });
+                } else {
+                    SwingUtilities.invokeLater(() -> {
+                        openRouterModelCombo.removeAllItems();
+                        openRouterModelCombo.addItem("anthropic/claude-3-haiku");
+                        openRouterModelCombo.addItem("anthropic/claude-3-sonnet");
+                        openRouterModelCombo.addItem("openai/gpt-4");
+                        openRouterModelCombo.addItem("openai/gpt-3.5-turbo");
+                        openRouterModelCombo.setSelectedItem(Settings.getSelectedOpenRouterModel());
+                    });
+                }
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    openRouterModelCombo.removeAllItems();
+                    openRouterModelCombo.addItem("Error loading models");
+                });
+            } finally {
+                SwingUtilities.invokeLater(() -> {
+                    refreshOpenRouterButton.setEnabled(true);
+                    refreshOpenRouterButton.setText("Refresh Models");
+                });
+            }
+        }).start();
+    }
+    
+    /**
+     * Refreshes the OpenAI models dropdown.
+     */
+    private void refreshOpenAIModels() {
+        SwingUtilities.invokeLater(() -> {
+            refreshOpenAIButton.setEnabled(false);
+            refreshOpenAIButton.setText("Loading...");
+        });
+        
+        new Thread(() -> {
+            try {
+                EnhancedAIProvider provider = providerManager.getEnhancedProvider(Settings.AIProviderType.OPENAI);
+                if (provider != null && provider.isAvailable()) {
+                    EnhancedAIProvider.ModelInfo[] models = provider.getAvailableModels();
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        openAIModelCombo.removeAllItems();
+                        for (EnhancedAIProvider.ModelInfo model : models) {
+                            openAIModelCombo.addItem(model.getId());
+                        }
+                        openAIModelCombo.setSelectedItem(Settings.getSelectedOpenAIModel());
+                    });
+                } else {
+                    SwingUtilities.invokeLater(() -> {
+                        openAIModelCombo.removeAllItems();
+                        openAIModelCombo.addItem("gpt-4");
+                        openAIModelCombo.addItem("gpt-3.5-turbo");
+                        openAIModelCombo.addItem("gpt-4-turbo");
+                        openAIModelCombo.setSelectedItem(Settings.getSelectedOpenAIModel());
+                    });
+                }
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    openAIModelCombo.removeAllItems();
+                    openAIModelCombo.addItem("Error loading models");
+                });
+            } finally {
+                SwingUtilities.invokeLater(() -> {
+                    refreshOpenAIButton.setEnabled(true);
+                    refreshOpenAIButton.setText("Refresh Models");
+                });
+            }
+        }).start();
+    }
+    
+    /**
+     * Refreshes the Claude models dropdown.
+     */
+    private void refreshClaudeModels() {
+        SwingUtilities.invokeLater(() -> {
+            refreshClaudeButton.setEnabled(false);
+            refreshClaudeButton.setText("Loading...");
+        });
+        
+        new Thread(() -> {
+            try {
+                EnhancedAIProvider provider = providerManager.getEnhancedProvider(Settings.AIProviderType.CLAUDE);
+                if (provider != null && provider.isAvailable()) {
+                    EnhancedAIProvider.ModelInfo[] models = provider.getAvailableModels();
+                    
+                    SwingUtilities.invokeLater(() -> {
+                        claudeModelCombo.removeAllItems();
+                        for (EnhancedAIProvider.ModelInfo model : models) {
+                            claudeModelCombo.addItem(model.getId());
+                        }
+                        claudeModelCombo.setSelectedItem(Settings.getSelectedClaudeModel());
+                    });
+                } else {
+                    SwingUtilities.invokeLater(() -> {
+                        claudeModelCombo.removeAllItems();
+                        claudeModelCombo.addItem("claude-3-haiku-20240307");
+                        claudeModelCombo.addItem("claude-3-sonnet-20240229");
+                        claudeModelCombo.addItem("claude-3-opus-20240229");
+                        claudeModelCombo.setSelectedItem(Settings.getSelectedClaudeModel());
+                    });
+                }
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    claudeModelCombo.removeAllItems();
+                    claudeModelCombo.addItem("Error loading models");
+                });
+            } finally {
+                SwingUtilities.invokeLater(() -> {
+                    refreshClaudeButton.setEnabled(true);
+                    refreshClaudeButton.setText("Refresh Models");
+                });
+            }
+        }).start();
+    }
+    
+    /**
+     * Configures the OpenRouter provider.
+     */
+    private void configureOpenRouterProvider() {
+        try {
+            OpenRouterProvider provider = (OpenRouterProvider) providerManager.getProvider(Settings.AIProviderType.OPENROUTER);
+            if (provider != null) {
+                Map<String, String> config = new HashMap<>();
+                config.put("apiKey", Settings.getOpenRouterApiKey());
+                config.put("endpoint", Settings.getOpenRouterEndpoint());
+                config.put("model", Settings.getSelectedOpenRouterModel());
+                provider.configure(config);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to configure OpenRouter provider: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Configures the OpenAI provider.
+     */
+    private void configureOpenAIProvider() {
+        try {
+            OpenAIProvider provider = (OpenAIProvider) providerManager.getProvider(Settings.AIProviderType.OPENAI);
+            if (provider != null) {
+                Map<String, String> config = new HashMap<>();
+                config.put("apiKey", Settings.getOpenAIApiKey());
+                config.put("endpoint", Settings.getOpenAIEndpoint());
+                config.put("model", Settings.getSelectedOpenAIModel());
+                provider.configure(config);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to configure OpenAI provider: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Configures the Claude provider.
+     */
+    private void configureClaudeProvider() {
+        try {
+            ClaudeProvider provider = (ClaudeProvider) providerManager.getProvider(Settings.AIProviderType.CLAUDE);
+            if (provider != null) {
+                Map<String, String> config = new HashMap<>();
+                config.put("apiKey", Settings.getClaudeApiKey());
+                config.put("endpoint", Settings.getClaudeEndpoint());
+                config.put("model", Settings.getSelectedClaudeModel());
+                config.put("maxTokens", String.valueOf(Settings.getClaudeMaxTokens()));
+                config.put("systemPrompt", Settings.getClaudeSystemPrompt());
+                provider.configure(config);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to configure Claude provider: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Tests the OpenRouter connection.
+     */
+    private void testOpenRouterConnection() {
+        testOpenRouterButton.setEnabled(false);
+        testOpenRouterButton.setText("Testing...");
+        
+        new Thread(() -> {
+            try {
+                boolean success = providerManager.testProviderConnection(Settings.AIProviderType.OPENROUTER);
+                
+                SwingUtilities.invokeLater(() -> {
+                    if (success) {
+                        JOptionPane.showMessageDialog(null, "OpenRouter connection successful!", 
+                            "Connection Test", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(null, "OpenRouter connection failed", 
+                            "Connection Test", JOptionPane.ERROR_MESSAGE);
+                    }
+                });
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(null, "Connection test failed: " + e.getMessage(), 
+                        "Connection Test", JOptionPane.ERROR_MESSAGE);
+                });
+            } finally {
+                SwingUtilities.invokeLater(() -> {
+                    testOpenRouterButton.setEnabled(true);
+                    testOpenRouterButton.setText("Test Connection");
+                });
+            }
+        }).start();
+    }
+    
+    /**
+     * Tests the OpenAI connection.
+     */
+    private void testOpenAIConnection() {
+        testOpenAIButton.setEnabled(false);
+        testOpenAIButton.setText("Testing...");
+        
+        new Thread(() -> {
+            try {
+                boolean success = providerManager.testProviderConnection(Settings.AIProviderType.OPENAI);
+                
+                SwingUtilities.invokeLater(() -> {
+                    if (success) {
+                        JOptionPane.showMessageDialog(null, "OpenAI connection successful!", 
+                            "Connection Test", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(null, "OpenAI connection failed", 
+                            "Connection Test", JOptionPane.ERROR_MESSAGE);
+                    }
+                });
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(null, "Connection test failed: " + e.getMessage(), 
+                        "Connection Test", JOptionPane.ERROR_MESSAGE);
+                });
+            } finally {
+                SwingUtilities.invokeLater(() -> {
+                    testOpenAIButton.setEnabled(true);
+                    testOpenAIButton.setText("Test Connection");
+                });
+            }
+        }).start();
+    }
+    
+    /**
+     * Tests the Claude connection.
+     */
+    private void testClaudeConnection() {
+        testClaudeButton.setEnabled(false);
+        testClaudeButton.setText("Testing...");
+        
+        new Thread(() -> {
+            try {
+                boolean success = providerManager.testProviderConnection(Settings.AIProviderType.CLAUDE);
+                
+                SwingUtilities.invokeLater(() -> {
+                    if (success) {
+                        JOptionPane.showMessageDialog(null, "Claude connection successful!", 
+                            "Connection Test", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(null, "Claude connection failed", 
+                            "Connection Test", JOptionPane.ERROR_MESSAGE);
+                    }
+                });
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(null, "Connection test failed: " + e.getMessage(), 
+                        "Connection Test", JOptionPane.ERROR_MESSAGE);
+                });
+            } finally {
+                SwingUtilities.invokeLater(() -> {
+                    testClaudeButton.setEnabled(true);
+                    testClaudeButton.setText("Test Connection");
+                });
+            }
+        }).start();
     }
 }

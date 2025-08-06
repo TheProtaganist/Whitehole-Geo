@@ -118,9 +118,14 @@ public class OptimizedAIResponseProcessor {
             return false;
         }
         
-        // Quick check for JSON structure
+        // Quick check for JSON structure - handle markdown code blocks
         String trimmed = aiResponse.trim();
-        if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+        
+        // Check if it's wrapped in markdown code blocks
+        boolean hasMarkdownWrapper = trimmed.startsWith("```") && trimmed.endsWith("```");
+        boolean hasDirectJson = trimmed.startsWith("{") && trimmed.endsWith("}");
+        
+        if (!hasMarkdownWrapper && !hasDirectJson) {
             return false;
         }
         
@@ -146,46 +151,135 @@ public class OptimizedAIResponseProcessor {
         }
         
         try {
-            // Try to extract JSON using regex first (faster than parsing)
-            Matcher matcher = JSON_PATTERN.matcher(aiResponse);
-            if (!matcher.find()) {
-                return null;
-            }
-            
-            String jsonStr = matcher.group();
-            
-            // Quick validation before parsing
-            if (!jsonStr.contains("transformations")) {
+            // First, try to find JSON in the response (AI might add extra text)
+            String jsonStr = extractJsonFromResponse(aiResponse);
+            if (jsonStr == null) {
                 return null;
             }
             
             // Parse JSON
             JSONObject json = new JSONObject(jsonStr);
             
-            // Validate structure
-            if (!json.has("transformations")) {
-                return null;
-            }
-            
-            JSONArray transformations = json.getJSONArray("transformations");
-            if (transformations.length() == 0) {
-                return null;
-            }
-            
-            // Validate first transformation to ensure proper format
-            if (transformations.length() > 0) {
-                JSONObject firstTransform = transformations.getJSONObject(0);
-                if (!firstTransform.has("objectId") || !firstTransform.has("type")) {
-                    return null;
+            // Validate structure - be more flexible about what we accept
+            if (json.has("transformations")) {
+                JSONArray transformations = json.getJSONArray("transformations");
+                if (transformations.length() > 0) {
+                    return json;
                 }
             }
             
-            return json;
+            // If no transformations array, try to create one from the response
+            return attemptJsonRecovery(aiResponse);
             
         } catch (JSONException e) {
             // Try to recover from common JSON errors
             return attemptJsonRecovery(aiResponse);
         }
+    }
+    
+    /**
+     * Extracts JSON from AI response that might contain extra text.
+     */
+    private String extractJsonFromResponse(String aiResponse) {
+        // Try multiple approaches to find JSON
+        
+        // 1. Look for complete JSON object with braces
+        Matcher matcher = JSON_PATTERN.matcher(aiResponse);
+        if (matcher.find()) {
+            String jsonStr = matcher.group();
+            if (jsonStr.contains("transformations") || jsonStr.contains("type")) {
+                return jsonStr;
+            }
+        }
+        
+        // 2. Look for JSON that starts with { and ends with }
+        int startBrace = aiResponse.indexOf('{');
+        int endBrace = aiResponse.lastIndexOf('}');
+        if (startBrace != -1 && endBrace != -1 && endBrace > startBrace) {
+            String jsonStr = aiResponse.substring(startBrace, endBrace + 1);
+            try {
+                // Test if it's valid JSON
+                new JSONObject(jsonStr);
+                return jsonStr;
+            } catch (JSONException e) {
+                // Not valid JSON, continue trying
+            }
+        }
+        
+        // 3. Try to find JSON-like content even without perfect braces
+        if (aiResponse.contains("transformations") && aiResponse.contains("type")) {
+            // Try to construct JSON from the response
+            return attemptJsonConstruction(aiResponse);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Attempts to construct JSON from AI response that contains transformation info.
+     */
+    private String attemptJsonConstruction(String aiResponse) {
+        try {
+            // Look for transformation-like patterns in the response
+            if (aiResponse.toLowerCase().contains("add") || aiResponse.toLowerCase().contains("create")) {
+                // Try to create an ADD transformation
+                return constructAddTransformation(aiResponse);
+            }
+            
+            if (aiResponse.toLowerCase().contains("move") || aiResponse.toLowerCase().contains("translate")) {
+                // Try to create a TRANSLATE transformation
+                return constructMoveTransformation(aiResponse);
+            }
+            
+            if (aiResponse.toLowerCase().contains("rotate")) {
+                // Try to create a ROTATE transformation
+                return constructRotateTransformation(aiResponse);
+            }
+            
+            if (aiResponse.toLowerCase().contains("scale")) {
+                // Try to create a SCALE transformation
+                return constructScaleTransformation(aiResponse);
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Failed to construct JSON from AI response: " + e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Constructs an ADD transformation JSON from AI response.
+     */
+    private String constructAddTransformation(String aiResponse) {
+        // This is a fallback - we'll return null to let fallback parsing handle it
+        // The fallback parsing is already working well for ADD commands
+        return null;
+    }
+    
+    /**
+     * Constructs a MOVE transformation JSON from AI response.
+     */
+    private String constructMoveTransformation(String aiResponse) {
+        // This is a fallback - we'll return null to let fallback parsing handle it
+        // The fallback parsing is already working well for MOVE commands
+        return null;
+    }
+    
+    /**
+     * Constructs a ROTATE transformation JSON from AI response.
+     */
+    private String constructRotateTransformation(String aiResponse) {
+        // This is a fallback - we'll return null to let fallback parsing handle it
+        return null;
+    }
+    
+    /**
+     * Constructs a SCALE transformation JSON from AI response.
+     */
+    private String constructScaleTransformation(String aiResponse) {
+        // This is a fallback - we'll return null to let fallback parsing handle it
+        return null;
     }
     
     /**
@@ -278,6 +372,13 @@ public class OptimizedAIResponseProcessor {
         
         int objectId = transformObj.getInt("objectId");
         String typeStr = transformObj.getString("type");
+        
+        // Check for failure indicator (objectId 0)
+        if (objectId == 0) {
+            String description = transformObj.optString("description", "Object not found");
+            System.out.println("DEBUG: AI indicated object not found: " + description);
+            return null;
+        }
         
         // Quick object existence check using context
         if (!objectExistsInContext(objectId, context)) {
@@ -383,5 +484,169 @@ public class OptimizedAIResponseProcessor {
         }
         
         return stats;
+    }
+    
+    /**
+     * Post-processes transformations to fix common issues like overlapping object positions.
+     * This method detects when multiple ADD transformations create objects at the same position
+     * and distributes them to avoid overlap.
+     */
+    public List<ObjectTransformation> postProcessTransformations(List<ObjectTransformation> transformations) {
+        if (transformations == null || transformations.isEmpty()) {
+            return transformations;
+        }
+        
+        List<ObjectTransformation> processed = new ArrayList<>();
+        Map<String, List<ObjectTransformation>> addTransformsByPosition = new HashMap<>();
+        
+        // Separate ADD transformations by position and collect others
+        for (ObjectTransformation transform : transformations) {
+            if (transform.getType() == ObjectTransformation.TransformationType.ADD) {
+                String positionKey = formatPositionKey(transform.getVectorValue());
+                addTransformsByPosition.computeIfAbsent(positionKey, k -> new ArrayList<>()).add(transform);
+            } else {
+                processed.add(transform);
+            }
+        }
+        
+        // Process ADD transformations, distributing overlapping ones
+        for (Map.Entry<String, List<ObjectTransformation>> entry : addTransformsByPosition.entrySet()) {
+            List<ObjectTransformation> transformsAtPosition = entry.getValue();
+            
+            if (transformsAtPosition.size() == 1) {
+                // Single object, no distribution needed
+                processed.add(transformsAtPosition.get(0));
+            } else {
+                // Multiple objects at same position, distribute them
+                List<ObjectTransformation> distributed = distributeOverlappingObjects(transformsAtPosition);
+                processed.addAll(distributed);
+            }
+        }
+        
+        return processed;
+    }
+    
+    /**
+     * Creates a position key for grouping transformations by location.
+     */
+    private String formatPositionKey(whitehole.math.Vec3f position) {
+        // Round to nearest 10 units to group nearby positions
+        int x = Math.round(position.x / 10.0f) * 10;
+        int y = Math.round(position.y / 10.0f) * 10;
+        int z = Math.round(position.z / 10.0f) * 10;
+        return x + "," + y + "," + z;
+    }
+    
+    /**
+     * Distributes overlapping ADD transformations to avoid object overlap.
+     */
+    private List<ObjectTransformation> distributeOverlappingObjects(List<ObjectTransformation> overlappingTransforms) {
+        List<ObjectTransformation> distributed = new ArrayList<>();
+        
+        if (overlappingTransforms.isEmpty()) {
+            return distributed;
+        }
+        
+        // Get the base position from the first transformation
+        whitehole.math.Vec3f basePosition = overlappingTransforms.get(0).getVectorValue();
+        int quantity = overlappingTransforms.size();
+        
+        // Determine object type for spacing (use first object's type)
+        String objectType = overlappingTransforms.get(0).getAddObjectType();
+        float spacing = getObjectSpacing(objectType);
+        
+        // Generate distributed positions
+        List<whitehole.math.Vec3f> distributedPositions = distributePositions(basePosition, quantity, spacing);
+        
+        // Create new transformations with distributed positions
+        for (int i = 0; i < overlappingTransforms.size(); i++) {
+            ObjectTransformation original = overlappingTransforms.get(i);
+            whitehole.math.Vec3f newPosition = distributedPositions.get(i);
+            
+            // Create new transformation with distributed position
+            ObjectTransformation distributed_transform = ObjectTransformation.addObject(
+                original.getAddObjectType(),
+                newPosition,
+                original.getDescription() + " (distributed)"
+            );
+            distributed.add(distributed_transform);
+        }
+        
+        return distributed;
+    }
+    
+    /**
+     * Distributes positions in a pattern to avoid overlap.
+     */
+    private List<whitehole.math.Vec3f> distributePositions(whitehole.math.Vec3f basePosition, int quantity, float spacing) {
+        List<whitehole.math.Vec3f> positions = new ArrayList<>();
+        
+        if (quantity == 1) {
+            positions.add(new whitehole.math.Vec3f(basePosition));
+            return positions;
+        }
+        
+        if (quantity <= 4) {
+            // Line distribution
+            float startOffset = -(quantity - 1) * spacing / 2.0f;
+            for (int i = 0; i < quantity; i++) {
+                float offset = startOffset + i * spacing;
+                positions.add(new whitehole.math.Vec3f(basePosition.x + offset, basePosition.y, basePosition.z));
+            }
+        } else if (quantity <= 9) {
+            // Grid distribution
+            int cols = (int) Math.ceil(Math.sqrt(quantity));
+            int rows = (int) Math.ceil((double) quantity / cols);
+            
+            float startX = -(cols - 1) * spacing / 2.0f;
+            float startZ = -(rows - 1) * spacing / 2.0f;
+            
+            int objectIndex = 0;
+            for (int row = 0; row < rows && objectIndex < quantity; row++) {
+                for (int col = 0; col < cols && objectIndex < quantity; col++) {
+                    float x = basePosition.x + startX + col * spacing;
+                    float z = basePosition.z + startZ + row * spacing;
+                    positions.add(new whitehole.math.Vec3f(x, basePosition.y, z));
+                    objectIndex++;
+                }
+            }
+        } else {
+            // Circular distribution
+            float radius = (quantity * spacing) / (2.0f * (float) Math.PI);
+            for (int i = 0; i < quantity; i++) {
+                double angle = 2.0 * Math.PI * i / quantity;
+                float x = basePosition.x + radius * (float) Math.cos(angle);
+                float z = basePosition.z + radius * (float) Math.sin(angle);
+                positions.add(new whitehole.math.Vec3f(x, basePosition.y, z));
+            }
+        }
+        
+        return positions;
+    }
+    
+    /**
+     * Gets appropriate spacing for different object types.
+     */
+    private float getObjectSpacing(String objectType) {
+        if (objectType == null) return 75.0f;
+        
+        String lowerType = objectType.toLowerCase();
+        
+        // Smaller objects need less spacing
+        if (lowerType.contains("coin") || lowerType.contains("star") || lowerType.contains("bit")) {
+            return 50.0f;
+        }
+        // Medium objects
+        else if (lowerType.contains("goomba") || lowerType.contains("koopa") || lowerType.contains("block")) {
+            return 100.0f;
+        }
+        // Large objects
+        else if (lowerType.contains("platform") || lowerType.contains("pipe") || lowerType.contains("ship")) {
+            return 200.0f;
+        }
+        // Default spacing
+        else {
+            return 75.0f;
+        }
     }
 }

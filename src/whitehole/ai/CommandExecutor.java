@@ -75,6 +75,19 @@ public class CommandExecutor {
         List<IUndo> undoEntries = new ArrayList<>();
         int successCount = 0;
         
+        // Perform batch validation before executing any transformations
+        ObjectConstraintValidator.ValidationResult batchValidation = 
+            ObjectConstraintValidator.validateBatchTransformations(transformations, globalObjList);
+        
+        if (batchValidation.hasErrors()) {
+            errors.addAll(batchValidation.getErrors());
+            return ExecutionResult.failure("Batch validation failed", errors, batchValidation.getWarnings());
+        }
+        
+        if (batchValidation.hasWarnings()) {
+            warnings.addAll(batchValidation.getWarnings());
+        }
+        
         // Start multi-undo entry for batch operations
         boolean isMultiOperation = transformations.size() > 1;
         if (isMultiOperation) {
@@ -82,12 +95,23 @@ public class CommandExecutor {
         }
         
         try {
+            // Track progress for batch operations
+            int totalTransformations = transformations.size();
+            int processedCount = 0;
+            
             for (ObjectTransformation transformation : transformations) {
+                processedCount++;
                 try {
                     IUndo undoEntry = executeTransformation(transformation);
                     if (undoEntry != null) {
                         undoEntries.add(undoEntry);
                         successCount++;
+                        
+                        // Log progress for large batches
+                        if (totalTransformations > 10 && processedCount % 5 == 0) {
+                            System.out.println("Progress: " + processedCount + "/" + totalTransformations + 
+                                             " transformations completed (" + successCount + " successful)");
+                        }
                     } else {
                         errors.add("Failed to apply transformation to object " + transformation.getObjectId());
                     }
@@ -128,10 +152,11 @@ public class CommandExecutor {
         }
         
         if (errors.isEmpty()) {
-            return ExecutionResult.success("Applied " + successCount + " transformations", successCount, warnings);
+            String detailedMessage = generateDetailedSuccessMessage(transformations, successCount);
+            return ExecutionResult.success(detailedMessage, successCount, warnings);
         } else if (successCount > 0) {
-            return ExecutionResult.partialSuccess("Applied " + successCount + " of " + transformations.size() + " transformations", 
-                                                successCount, errors, warnings);
+            String detailedMessage = generateDetailedPartialSuccessMessage(transformations, successCount);
+            return ExecutionResult.partialSuccess(detailedMessage, successCount, errors, warnings);
         } else {
             return ExecutionResult.failure("Failed to apply any transformations", errors, warnings);
         }
@@ -571,7 +596,9 @@ public class CommandExecutor {
                 success = applyScaling(obj, transformation);
                 break;
             case SET_POSITION:
+                System.out.println("DEBUG: Processing SET_POSITION transformation for object ID " + transformation.getObjectId());
                 success = applySetPosition(obj, transformation);
+                System.out.println("DEBUG: SET_POSITION result: " + success);
                 break;
             case SET_ROTATION:
                 success = applySetRotation(obj, transformation);
@@ -725,6 +752,13 @@ public class CommandExecutor {
         }
         
         obj.position.add(delta);
+        
+        // Add specific render tasks for position changes
+        if (obj.renderer != null && obj.renderer.hasSpecialPosition()) {
+            editorForm.addRerenderTask("object:" + obj.uniqueID);
+        }
+        editorForm.addRerenderTask("zone:" + obj.stage.stageName);
+        
         return true;
     }
     
@@ -739,6 +773,13 @@ public class CommandExecutor {
         }
         
         obj.rotation.add(delta);
+        
+        // Add specific render tasks for rotation changes
+        if (obj.renderer != null && obj.renderer.hasSpecialRotation()) {
+            editorForm.addRerenderTask("object:" + obj.uniqueID);
+        }
+        editorForm.addRerenderTask("zone:" + obj.stage.stageName);
+        
         return true;
     }
     
@@ -755,6 +796,13 @@ public class CommandExecutor {
         obj.scale.x *= factor.x;
         obj.scale.y *= factor.y;
         obj.scale.z *= factor.z;
+        
+        // Add specific render tasks for scale changes
+        if (obj.renderer != null && obj.renderer.hasSpecialScaling()) {
+            editorForm.addRerenderTask("object:" + obj.uniqueID);
+        }
+        editorForm.addRerenderTask("zone:" + obj.stage.stageName);
+        
         return true;
     }
     
@@ -763,9 +811,24 @@ public class CommandExecutor {
      */
     private boolean applySetPosition(AbstractObj obj, ObjectTransformation transformation) {
         Vec3f position = transformation.getVectorValue();
-        if (position == null) return false;
+        if (position == null) {
+            System.err.println("DEBUG: SET_POSITION failed - position vector is null");
+            return false;
+        }
+        
+        System.out.println("DEBUG: Applying SET_POSITION to object " + obj.name + " (ID: " + obj.uniqueID + ")");
+        System.out.println("DEBUG: Old position: " + obj.position);
+        System.out.println("DEBUG: New position: " + position);
         
         obj.position.set(position);
+        
+        // Add specific render tasks for position changes (like GalaxyEditorForm does)
+        if (obj.renderer != null && obj.renderer.hasSpecialPosition()) {
+            editorForm.addRerenderTask("object:" + obj.uniqueID);
+        }
+        editorForm.addRerenderTask("zone:" + obj.stage.stageName);
+        
+        System.out.println("DEBUG: Position after set: " + obj.position);
         return true;
     }
     
@@ -777,6 +840,13 @@ public class CommandExecutor {
         if (rotation == null) return false;
         
         obj.rotation.set(rotation);
+        
+        // Add specific render tasks for rotation changes
+        if (obj.renderer != null && obj.renderer.hasSpecialRotation()) {
+            editorForm.addRerenderTask("object:" + obj.uniqueID);
+        }
+        editorForm.addRerenderTask("zone:" + obj.stage.stageName);
+        
         return true;
     }
     
@@ -788,6 +858,13 @@ public class CommandExecutor {
         if (scale == null) return false;
         
         obj.scale.set(scale);
+        
+        // Add specific render tasks for scale changes
+        if (obj.renderer != null && obj.renderer.hasSpecialScaling()) {
+            editorForm.addRerenderTask("object:" + obj.uniqueID);
+        }
+        editorForm.addRerenderTask("zone:" + obj.stage.stageName);
+        
         return true;
     }
     
@@ -993,6 +1070,85 @@ public class CommandExecutor {
                 .filter(r -> !r.isSuccess())
                 .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
         }
+    }
+    
+    /**
+     * Generates a detailed success message describing what transformations were applied.
+     */
+    private String generateDetailedSuccessMessage(List<ObjectTransformation> transformations, int successCount) {
+        Map<ObjectTransformation.TransformationType, Integer> typeCounts = new HashMap<>();
+        Map<String, Integer> addObjectCounts = new HashMap<>();
+        
+        for (ObjectTransformation transform : transformations) {
+            typeCounts.put(transform.getType(), typeCounts.getOrDefault(transform.getType(), 0) + 1);
+            
+            if (transform.getType() == ObjectTransformation.TransformationType.ADD) {
+                String objType = transform.getAddObjectType();
+                addObjectCounts.put(objType, addObjectCounts.getOrDefault(objType, 0) + 1);
+            }
+        }
+        
+        StringBuilder message = new StringBuilder();
+        message.append("Successfully applied ").append(successCount).append(" transformations:\n");
+        
+        for (Map.Entry<ObjectTransformation.TransformationType, Integer> entry : typeCounts.entrySet()) {
+            ObjectTransformation.TransformationType type = entry.getKey();
+            int count = entry.getValue();
+            
+            switch (type) {
+                case ADD:
+                    message.append("- Added ").append(count).append(" objects");
+                    if (!addObjectCounts.isEmpty()) {
+                        message.append(" (");
+                        boolean first = true;
+                        for (Map.Entry<String, Integer> objEntry : addObjectCounts.entrySet()) {
+                            if (!first) message.append(", ");
+                            message.append(objEntry.getValue()).append(" ").append(objEntry.getKey());
+                            first = false;
+                        }
+                        message.append(")");
+                    }
+                    message.append("\n");
+                    break;
+                case TRANSLATE:
+                    message.append("- Moved ").append(count).append(" objects\n");
+                    break;
+                case ROTATE:
+                    message.append("- Rotated ").append(count).append(" objects\n");
+                    break;
+                case SCALE:
+                    message.append("- Scaled ").append(count).append(" objects\n");
+                    break;
+                case SET_POSITION:
+                    message.append("- Set position of ").append(count).append(" objects\n");
+                    break;
+                case SET_ROTATION:
+                    message.append("- Set rotation of ").append(count).append(" objects\n");
+                    break;
+                case SET_SCALE:
+                    message.append("- Set scale of ").append(count).append(" objects\n");
+                    break;
+                case PROPERTY_CHANGE:
+                    message.append("- Changed properties of ").append(count).append(" objects\n");
+                    break;
+                default:
+                    message.append("- Applied ").append(count).append(" ").append(type).append(" operations\n");
+                    break;
+            }
+        }
+        
+        return message.toString().trim();
+    }
+    
+    /**
+     * Generates a detailed partial success message.
+     */
+    private String generateDetailedPartialSuccessMessage(List<ObjectTransformation> transformations, int successCount) {
+        String detailedSuccess = generateDetailedSuccessMessage(transformations, successCount);
+        int totalCount = transformations.size();
+        int failedCount = totalCount - successCount;
+        
+        return detailedSuccess + "\n\nNote: " + failedCount + " of " + totalCount + " transformations failed.";
     }
     
     /**

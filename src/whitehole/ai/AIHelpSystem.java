@@ -142,6 +142,9 @@ public class AIHelpSystem {
         // Configuration Tab
         tabbedPane.addTab("Configuration", createConfigurationPanel());
         
+        // Provider Management Tab
+        tabbedPane.addTab("Providers", createProviderManagementPanel());
+        
         helpDialog.add(tabbedPane);
         helpDialog.setVisible(true);
     }
@@ -241,6 +244,19 @@ public class AIHelpSystem {
         configArea.setText(getConfigurationText());
         
         panel.add(new JScrollPane(configArea), BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    private static JPanel createProviderManagementPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        
+        JTextArea providerArea = new JTextArea();
+        providerArea.setEditable(false);
+        providerArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        providerArea.setText(getProviderManagementText());
+        
+        panel.add(new JScrollPane(providerArea), BorderLayout.CENTER);
         
         return panel;
     }
@@ -389,14 +405,39 @@ Ollama (Local AI):
 5. Select your downloaded model
 6. Test connection to verify setup
 
+OpenRouter (Multiple Models):
+1. Go to https://openrouter.ai and create an account
+2. Generate an API key from your dashboard
+3. Copy the key to Settings > AI Configuration > OpenRouter API Key
+4. Select from various models (Claude, GPT-4, Llama, etc.)
+5. Test connection to verify setup
+
+OpenAI (GPT Models):
+1. Go to https://platform.openai.com/api-keys
+2. Create a new API key
+3. Copy the key to Settings > AI Configuration > OpenAI API Key
+4. Select your preferred GPT model
+5. Test connection to verify setup
+
+Claude (Anthropic):
+1. Go to https://console.anthropic.com and create an account
+2. Generate an API key from your dashboard
+3. Copy the key to Settings > AI Configuration > Claude API Key
+4. Select your preferred Claude model
+5. Test connection to verify setup
+
 Provider Selection:
-- Gemini: Better accuracy, requires internet and API key
-- Ollama: Works offline, requires local setup and more resources
+- Gemini: Good balance of accuracy and speed
+- Ollama: Works offline, requires local setup
+- OpenRouter: Access to multiple models with one API key
+- OpenAI: High-quality GPT models, requires API credits
+- Claude: Excellent reasoning capabilities
 
 Recommended Settings:
-- For best results: Use Gemini with gemini-1.5-flash model
-- For privacy: Use Ollama with llama2 or codellama model
-- For speed: Use smaller models like gemini-1.5-flash or llama2:7b
+- For best results: OpenRouter with Claude-3 Sonnet
+- For privacy: Ollama with llama2 or codellama model
+- For speed: Gemini with gemini-1.5-flash
+- For reasoning: Claude with claude-3-sonnet
 
 Security Notes:
 - API keys are stored securely in system preferences
@@ -405,15 +446,15 @@ Security Notes:
 - Local Ollama processing keeps all data on your machine
 
 Performance Tips:
-- Gemini is generally faster for complex commands
-- Ollama performance depends on your hardware
+- Different providers excel at different tasks
+- Use provider switching to find the best fit
 - Larger models provide better accuracy but slower responses
-- Consider your internet speed when choosing providers
+- Consider API costs when choosing cloud providers
 
 Troubleshooting Configuration:
 - Verify API keys don't have extra spaces
 - Check firewall settings for Ollama
-- Ensure Ollama models are properly downloaded
+- Ensure you have sufficient API credits
 - Test with simple commands first
 - Check the troubleshooting tab for specific error solutions
 """;
@@ -444,6 +485,118 @@ Tips:
 - Use Ctrl+Z to undo changes
 
 Click the Help button for detailed documentation.
+""";
+    }
+    
+    private static String getProviderManagementText() {
+        return """
+AI Provider Management Guide
+===========================
+
+Using the Provider Panel:
+
+Provider Selection:
+- Use the Provider dropdown to switch between AI services
+- Each provider has different strengths and capabilities
+- Settings are automatically saved when you switch providers
+
+Model Selection:
+- Use the Model dropdown to choose specific AI models
+- Different models have varying capabilities and costs
+- Some models support advanced features like vision or streaming
+
+Connection Testing:
+- Click "Test" to verify your current provider configuration
+- Green status indicator means the provider is ready
+- Red status indicator means there's a configuration issue
+
+Provider Status Indicators:
+✓ Green: Provider is configured and available
+✗ Red: Provider has configuration issues
+(Streaming): Provider supports real-time response streaming
+
+Managing Command History:
+
+History Tab:
+- View all previously executed commands
+- Double-click any command to reuse it
+- Use the star (★) button to add commands to favorites
+- Clear history when needed to remove old commands
+
+Favorites Tab:
+- Store frequently used commands for quick access
+- Double-click to execute a favorite command
+- Remove commands you no longer need
+- Clear all favorites when starting fresh
+
+Provider-Specific Features:
+
+Gemini:
+- Fast response times
+- Good general-purpose AI
+- Supports various model sizes
+
+Ollama:
+- Runs locally on your machine
+- Complete privacy (no data sent online)
+- Requires model downloads and system resources
+
+OpenRouter:
+- Access to multiple AI models with one API key
+- Includes Claude, GPT-4, Llama, and more
+- Pay-per-use pricing model
+
+OpenAI:
+- High-quality GPT models
+- Excellent for complex reasoning tasks
+- Supports streaming responses
+
+Claude:
+- Excellent reasoning and analysis
+- Good at understanding context
+- Strong safety features
+
+Best Practices:
+
+1. Test Multiple Providers:
+   - Different providers excel at different tasks
+   - Try the same command with different providers
+   - Keep your favorites updated with the best results
+
+2. Use Favorites Effectively:
+   - Save complex commands that work well
+   - Organize by task type (movement, rotation, etc.)
+   - Share favorites with team members
+
+3. Monitor Provider Status:
+   - Check the status indicator regularly
+   - Test connections when switching providers
+   - Keep API keys up to date
+
+4. Optimize for Your Workflow:
+   - Use local Ollama for privacy-sensitive work
+   - Use cloud providers for complex reasoning
+   - Switch providers based on task complexity
+
+Troubleshooting Provider Issues:
+
+Connection Problems:
+- Verify API keys are correct and active
+- Check internet connection for cloud providers
+- Ensure Ollama server is running for local AI
+- Test with simple commands first
+
+Model Selection Issues:
+- Some models may not be available in your region
+- Check your API account for model access
+- Try alternative models if your preferred one fails
+- Update provider configurations in Settings
+
+Performance Issues:
+- Local models depend on your hardware
+- Cloud providers may have rate limits
+- Try smaller models for faster responses
+- Consider provider switching for better performance
 """;
     }
 }

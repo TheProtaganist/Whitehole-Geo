@@ -168,8 +168,14 @@ public class OptimizedJsonSerializer {
         json.put("galaxy", context.getGalaxyName());
         json.put("zone", context.getCurrentZone());
         
-        // Get objects sorted by relevance (closer to origin first, then by type)
-        List<GalaxyContext.ObjectInfo> sortedObjects = context.getObjects().stream()
+        // First, find character objects to ensure they're included
+        List<GalaxyContext.ObjectInfo> characterObjects = context.getObjects().stream()
+            .filter(this::isCharacterObject)
+            .collect(Collectors.toList());
+        
+        // Get remaining objects sorted by relevance (closer to origin first, then by type)
+        List<GalaxyContext.ObjectInfo> remainingObjects = context.getObjects().stream()
+            .filter(obj -> !isCharacterObject(obj))
             .sorted((a, b) -> {
                 // Sort by distance from origin first
                 float distA = a.getPosition().length();
@@ -180,8 +186,13 @@ public class OptimizedJsonSerializer {
                 // Then by type (enemies and collectibles first)
                 return getTypeRelevance(a.getType()) - getTypeRelevance(b.getType());
             })
-            .limit(maxObjects)
+            .limit(maxObjects - characterObjects.size()) // Reserve space for character objects
             .collect(Collectors.toList());
+        
+        // Combine character objects first, then remaining objects
+        List<GalaxyContext.ObjectInfo> sortedObjects = new ArrayList<>();
+        sortedObjects.addAll(characterObjects);
+        sortedObjects.addAll(remainingObjects);
         
         // Serialize objects with AI-optimized format
         JSONArray objectsArray = new JSONArray();
@@ -190,6 +201,14 @@ public class OptimizedJsonSerializer {
             objJson.put("id", obj.getUniqueId());
             objJson.put("name", obj.getName());
             objJson.put("type", obj.getType());
+            
+            // Add Link ID if available in properties
+            Map<String, Object> properties = obj.getProperties();
+            if (properties.containsKey("l_id")) {
+                objJson.put("linkId", properties.get("l_id"));
+            } else if (properties.containsKey("LinkId")) {
+                objJson.put("linkId", properties.get("LinkId"));
+            }
             
             // Position as array for compactness
             JSONArray pos = new JSONArray();
@@ -445,5 +464,31 @@ public class OptimizedJsonSerializer {
                !tag.equals("unknown") && 
                !tag.equals("debug") &&
                tag.length() > 1;
+    }
+
+    private boolean isCharacterObject(GalaxyContext.ObjectInfo obj) {
+        String name = obj.getName().toLowerCase();
+        String displayName = obj.getDisplayName().toLowerCase();
+        String type = obj.getType().toLowerCase();
+        
+        // Check for character names in object names
+        String[] characterNames = {"luigi", "mario", "peach", "toad", "rosetta", "kinopio", "player", "playeractor"};
+        for (String charName : characterNames) {
+            if (name.contains(charName) || displayName.contains(charName)) {
+                return true;
+            }
+        }
+        
+        // Check for spawn objects (which might be Mario)
+        if (type.contains("spawn") || name.contains("spawn") || displayName.contains("spawn")) {
+            return true;
+        }
+        
+        // Check for start objects (which might be player spawn points)
+        if (type.contains("start") || name.contains("start") || displayName.contains("start")) {
+            return true;
+        }
+        
+        return false;
     }
 }

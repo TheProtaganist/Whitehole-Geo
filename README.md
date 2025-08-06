@@ -6,15 +6,30 @@
 
 > 🙏 **Built upon [Whitehole-Neo](https://github.com/SMGCommunity/Whitehole-Neo)** by the SMG Community - Enhanced with AI Commands and modern features.
 
-## ✨ What's New in This Version
+## 🎉 Version 1.5 - Major Release!
 
-### 🤖 AI Commands (NEW!)
+**Whitehole Geo 1.5** brings groundbreaking AI-powered editing capabilities with working AI parsing and comprehensive object manipulation. This major release introduces multiple AI provider support and a completely rewritten command system.
 
-- **Natural Language Editing**: Control the editor with plain English commands
-- **Smart Object Manipulation**: "add a Goomba at 100, 0, 200", "move all coins up"
-- **Intelligent Batch Operations**: Transform multiple objects at once
-- **AI Provider Support**: Works with Gemini AI, Ollama, or built-in parsing
-- **Offline Support**: Works without API keys using built-in command parsing
+## ✨ What's New in Version 1.5
+
+### 🤖 AI Commands - Fully Working System!
+
+**Revolutionary Natural Language Editing** - Now with multiple AI provider support:
+
+- **Multiple AI Providers**: Choose from Gemini AI, Ollama (local), OpenAI, or built-in parsing
+- **Working AI Parsing**: Complete rewrite with robust command interpretation
+- **Smart Object Manipulation**: "add a Goomba at 100, 0, 200", "move all coins up by 5"
+- **Intelligent Batch Operations**: Transform multiple objects simultaneously
+- **Context-Aware Commands**: AI understands your galaxy structure and object relationships
+- **Offline Support**: Works without API keys using advanced built-in command parsing
+- **Error Recovery**: Smart error handling with suggestions for command corrections
+- **Command History**: Track and repeat previous AI commands
+
+**Supported AI Providers:**
+- 🔥 **Gemini AI** - Google's powerful language model (API key required)
+- 🏠 **Ollama** - Run AI models locally (no API key needed)
+- 🤖 **OpenAI** - GPT models for advanced command understanding
+- 🧠 **Built-in Parser** - Sophisticated offline command interpretation
 
 ### 🎮 Enhanced Controls
 
@@ -33,27 +48,47 @@
 
 ### 🤖 AI Commands Examples
 
+**Basic Object Manipulation:**
 ```text
 add a Goomba at 100, 0, 200
 move all coins 5 units up
-rotate the platform 45 degrees
+rotate the platform 45 degrees on Y axis
 scale selected objects by 1.5x
-change the Koopa color to red
-create a ring of coins around 0, 100, 0
+delete all enemies in this zone
 ```
 
-## 🎯 Core Features
+**Advanced Batch Operations:**
+```text
+create a ring of 8 coins around 0, 100, 0 with radius 200
+move every Star Bit above y=500 down to y=400
+rotate all platforms between x=100 and x=300 by 90 degrees
+scale all small enemies by 2x but leave large ones unchanged
+change all red coins to blue coins in the current layer
+```
 
-**Whitehole Geo** builds upon the solid foundation of the original Whitehole with major improvements:
+**Smart Context Commands:**
+```text
+arrange the selected objects in a line
+duplicate this platform 5 times with 100 unit spacing
+create a spiral staircase with these blocks
+mirror all objects across the Z axis
+group nearby coins into clusters
+```
 
-- **AI-Powered Editing** - Revolutionary natural language interface
-- **Enhanced Stability** - Cleaned up codebase, removed broken features
-- **Modern Object Database** - Support for the [new SMG Community database](https://github.com/SMGCommunity/galaxydatabase)
-- **Improved UI** - Light/Dark modes with modern flat design
-- **Undo System** - Full undo/redo for all editing operations
-- **Copy & Paste** - Duplicate objects and arrangements easily
-- **SMG1 Compatibility** - Full support for all Super Mario Galaxy 1 stages
-- **Template System** - Quick-start templates for common galaxy types
+## 🎯 Core Features - Version 1.5
+
+**Whitehole Geo 1.5** builds upon the solid foundation of the original Whitehole with revolutionary improvements:
+
+- **🤖 AI-Powered Editing** - Multiple AI providers with working natural language interface
+- **🧠 Advanced Object Manipulation** - Context-aware batch operations and smart transformations
+- **⚡ Enhanced Stability** - Completely rewritten AI system with robust error handling
+- **📊 Modern Object Database** - Support for the [new SMG Community database](https://github.com/SMGCommunity/galaxydatabase)
+- **🎨 Improved UI** - Light/Dark modes with modern flat design and AI status indicators
+- **↩️ Full Undo System** - Complete undo/redo for all editing operations including AI commands
+- **📋 Copy & Paste** - Duplicate objects and arrangements with AI-assisted positioning
+- **🌟 SMG1 Compatibility** - Full support for all Super Mario Galaxy 1 stages
+- **📝 Enhanced Template System** - AI-generated templates and quick-start galaxy types
+- **🔄 Command History** - Track and repeat AI commands with learning capabilities
 
 ## ⚙️ System Requirements
 

@@ -204,7 +204,10 @@ public final class Settings {
     // ==== AI PROVIDER SETTINGS ====
     public enum AIProviderType {
         GEMINI,
-        OLLAMA
+        OLLAMA,
+        OPENROUTER,
+        OPENAI,
+        CLAUDE
     }
     
     public static AIProviderType getActiveAIProvider() {
@@ -266,6 +269,82 @@ public final class Settings {
     }
     public static void setSelectedOllamaModel(String val) { PREFERENCES.put("whitehole_selectedOllamaModel", val); }
     
+    // OpenRouter settings
+    public static String getOpenRouterApiKey() { 
+        String key = PREFERENCES.get("whitehole_openrouterApiKey", "");
+        // If the key looks like a placeholder or demo key, return empty
+        if (key.contains("your-api-key") || key.contains("demo") || key.contains("test") || 
+            key.contains("example") || key.contains("placeholder") || key.contains("sample")) {
+            return "";
+        }
+        return key; 
+    }
+    public static void setOpenRouterApiKey(String val) { PREFERENCES.put("whitehole_openrouterApiKey", val); }
+    
+    public static String getOpenRouterEndpoint() { 
+        return PREFERENCES.get("whitehole_openrouterEndpoint", "https://openrouter.ai/api/v1/chat/completions"); 
+    }
+    public static void setOpenRouterEndpoint(String val) { PREFERENCES.put("whitehole_openrouterEndpoint", val); }
+    
+    public static String getSelectedOpenRouterModel() { 
+        return PREFERENCES.get("whitehole_selectedOpenRouterModel", "anthropic/claude-3-haiku"); 
+    }
+    public static void setSelectedOpenRouterModel(String val) { PREFERENCES.put("whitehole_selectedOpenRouterModel", val); }
+    
+    // OpenAI settings
+    public static String getOpenAIApiKey() { 
+        String key = PREFERENCES.get("whitehole_openaiApiKey", "");
+        // If the key looks like a placeholder or demo key, return empty
+        if (key.contains("your-api-key") || key.contains("demo") || key.contains("test") || 
+            key.contains("example") || key.contains("placeholder") || key.contains("sample")) {
+            return "";
+        }
+        return key; 
+    }
+    public static void setOpenAIApiKey(String val) { PREFERENCES.put("whitehole_openaiApiKey", val); }
+    
+    public static String getOpenAIEndpoint() { 
+        return PREFERENCES.get("whitehole_openaiEndpoint", "https://api.openai.com/v1/chat/completions"); 
+    }
+    public static void setOpenAIEndpoint(String val) { PREFERENCES.put("whitehole_openaiEndpoint", val); }
+    
+    public static String getSelectedOpenAIModel() { 
+        return PREFERENCES.get("whitehole_selectedOpenAIModel", "gpt-4"); 
+    }
+    public static void setSelectedOpenAIModel(String val) { PREFERENCES.put("whitehole_selectedOpenAIModel", val); }
+    
+    // Claude settings
+    public static String getClaudeApiKey() { 
+        String key = PREFERENCES.get("whitehole_claudeApiKey", "");
+        // If the key looks like a placeholder or demo key, return empty
+        if (key.contains("your-api-key") || key.contains("demo") || key.contains("test") || 
+            key.contains("example") || key.contains("placeholder") || key.contains("sample")) {
+            return "";
+        }
+        return key; 
+    }
+    public static void setClaudeApiKey(String val) { PREFERENCES.put("whitehole_claudeApiKey", val); }
+    
+    public static String getClaudeEndpoint() { 
+        return PREFERENCES.get("whitehole_claudeEndpoint", "https://api.anthropic.com/v1/messages"); 
+    }
+    public static void setClaudeEndpoint(String val) { PREFERENCES.put("whitehole_claudeEndpoint", val); }
+    
+    public static String getSelectedClaudeModel() { 
+        return PREFERENCES.get("whitehole_selectedClaudeModel", "claude-3-haiku-20240307"); 
+    }
+    public static void setSelectedClaudeModel(String val) { PREFERENCES.put("whitehole_selectedClaudeModel", val); }
+    
+    public static int getClaudeMaxTokens() { 
+        return PREFERENCES.getInt("whitehole_claudeMaxTokens", 4096); 
+    }
+    public static void setClaudeMaxTokens(int val) { PREFERENCES.putInt("whitehole_claudeMaxTokens", val); }
+    
+    public static String getClaudeSystemPrompt() { 
+        return PREFERENCES.get("whitehole_claudeSystemPrompt", ""); 
+    }
+    public static void setClaudeSystemPrompt(String val) { PREFERENCES.put("whitehole_claudeSystemPrompt", val); }
+    
     /**
      * Clears any invalid AI provider settings that might cause issues.
      * Call this if there are configuration problems.
@@ -294,5 +373,108 @@ public final class Settings {
         if (currentOllamaUrl.contains("test-endpoint.com") || currentOllamaUrl.isEmpty()) {
             setOllamaServerUrl("http://localhost:11434");
         }
+        
+        // Clear invalid OpenRouter settings
+        clearInvalidApiKey("whitehole_openrouterApiKey");
+        String openRouterEndpoint = getOpenRouterEndpoint();
+        if (openRouterEndpoint.contains("test-endpoint.com") || openRouterEndpoint.isEmpty()) {
+            setOpenRouterEndpoint("https://openrouter.ai/api/v1/chat/completions");
+        }
+        
+        // Clear invalid OpenAI settings
+        clearInvalidApiKey("whitehole_openaiApiKey");
+        String openAIEndpoint = getOpenAIEndpoint();
+        if (openAIEndpoint.contains("test-endpoint.com") || openAIEndpoint.isEmpty()) {
+            setOpenAIEndpoint("https://api.openai.com/v1/chat/completions");
+        }
+        
+        // Clear invalid Claude settings
+        clearInvalidApiKey("whitehole_claudeApiKey");
+        String claudeEndpoint = getClaudeEndpoint();
+        if (claudeEndpoint.contains("test-endpoint.com") || claudeEndpoint.isEmpty()) {
+            setClaudeEndpoint("https://api.anthropic.com/v1/messages");
+        }
+    }
+    
+    /**
+     * Helper method to clear invalid API keys.
+     */
+    private static void clearInvalidApiKey(String keyName) {
+        String key = PREFERENCES.get(keyName, "");
+        if (key.equals("test-key") || key.equals("default-key") || 
+            key.contains("test") || key.contains("example") ||
+            key.contains("demo") || key.contains("sample") ||
+            key.contains("placeholder") || key.contains("your-api-key")) {
+            PREFERENCES.remove(keyName);
+        }
+    }
+    
+    /**
+     * Saves all API keys to persistent storage.
+     * Called when the application closes to ensure keys are preserved.
+     */
+    public static void saveApiKeysOnClose() {
+        try {
+            // Force flush preferences to disk
+            PREFERENCES.flush();
+            System.out.println("API keys saved to persistent storage");
+        } catch (Exception e) {
+            System.err.println("Failed to save API keys: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Clears all API keys from storage.
+     * Called during development/recompile to clear test keys.
+     */
+    public static void clearAllApiKeysOnRecompile() {
+        try {
+            // Clear all AI provider API keys
+            PREFERENCES.remove("whitehole_geminiApiKey");
+            PREFERENCES.remove("whitehole_openrouterApiKey");
+            PREFERENCES.remove("whitehole_openaiApiKey");
+            PREFERENCES.remove("whitehole_claudeApiKey");
+            
+            // Flush changes
+            PREFERENCES.flush();
+            System.out.println("All API keys cleared for recompile");
+        } catch (Exception e) {
+            System.err.println("Failed to clear API keys: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Checks if this is a development/recompile scenario and clears keys if needed.
+     * This method should be called during application startup.
+     */
+    public static void handleRecompileCleanup() {
+        // Check if this is a development environment by looking for build artifacts
+        String userDir = System.getProperty("user.dir");
+        java.io.File buildDir = new java.io.File(userDir, "build");
+        java.io.File srcDir = new java.io.File(userDir, "src");
+        
+        // If both build and src directories exist, this is likely a development environment
+        if (buildDir.exists() && srcDir.exists()) {
+            // Check if build is newer than last run (indicating recompile)
+            long lastRunTime = PREFERENCES.getLong("whitehole_lastRunTime", 0);
+            long buildTime = buildDir.lastModified();
+            
+            if (buildTime > lastRunTime) {
+                System.out.println("Recompile detected, clearing API keys");
+                clearAllApiKeysOnRecompile();
+            }
+            
+            // Update last run time
+            PREFERENCES.putLong("whitehole_lastRunTime", System.currentTimeMillis());
+        }
+    }
+    
+    /**
+     * Registers a shutdown hook to save API keys when the application closes.
+     */
+    public static void registerShutdownHook() {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            saveApiKeysOnClose();
+        }));
     }
 }

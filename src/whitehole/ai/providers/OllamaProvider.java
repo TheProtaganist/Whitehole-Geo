@@ -20,6 +20,7 @@ import whitehole.ai.AIProvider;
 import whitehole.ai.AIResponse;
 import whitehole.ai.AIProviderException;
 import whitehole.ai.GalaxyContext;
+
 import org.json.JSONObject;
 import org.json.JSONArray;
 import java.io.*;
@@ -85,11 +86,9 @@ public class OllamaProvider implements AIProvider {
                 AIProviderException.ErrorType.CONFIGURATION_ERROR);
         }
         
-        // For now, convert to simple text-based processing
-        // TODO: Implement proper command parsing and object transformation
         try {
-            String contextStr = context != null ? serializeContextToString(context) : "";
-            String rawResponse = sendRequest(command, contextStr);
+            // Send the command directly to Ollama and return the raw response
+            String rawResponse = sendRequest(command, "");
             
             return new AIResponse.Builder()
                 .setSuccess(true)

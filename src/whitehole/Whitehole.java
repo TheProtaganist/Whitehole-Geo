@@ -97,6 +97,10 @@ public class Whitehole {
             System.err.println("Failed to initialize ObjectDatabaseContext: " + e.getMessage());
         }
         
+        // Handle API key persistence and cleanup
+        Settings.handleRecompileCleanup();
+        Settings.registerShutdownHook();
+        
         ModelSubstitutions.init();
         SpecialRenderers.initBaseGame(); //Must come after the Object Database and ModelSubstitutions
         

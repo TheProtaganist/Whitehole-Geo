@@ -303,6 +303,210 @@ public class ObjectConstraintValidator {
     }
     
     /**
+     * Validates a batch of transformations for conflicts and impossible operations.
+     * This method checks for transformations that might conflict with each other
+     * or create impossible states when applied together.
+     */
+    public static ValidationResult validateBatchTransformations(List<ObjectTransformation> transformations, 
+                                                              Map<Integer, AbstractObj> globalObjList) {
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        
+        if (transformations == null || transformations.isEmpty()) {
+            return new ValidationResult(true, errors, warnings);
+        }
+        
+        // Group transformations by object ID to detect conflicts
+        Map<Integer, List<ObjectTransformation>> transformsByObject = new java.util.HashMap<>();
+        for (ObjectTransformation transform : transformations) {
+            int objectId = transform.getObjectId();
+            transformsByObject.computeIfAbsent(objectId, k -> new ArrayList<>()).add(transform);
+        }
+        
+        // Check for conflicting transformations on the same object
+        for (Map.Entry<Integer, List<ObjectTransformation>> entry : transformsByObject.entrySet()) {
+            int objectId = entry.getKey();
+            List<ObjectTransformation> objectTransforms = entry.getValue();
+            
+            if (objectTransforms.size() > 1) {
+                ValidationResult conflictResult = validateTransformationConflicts(objectId, objectTransforms, globalObjList);
+                errors.addAll(conflictResult.getErrors());
+                warnings.addAll(conflictResult.getWarnings());
+            }
+        }
+        
+        // Check for impossible operations
+        for (ObjectTransformation transform : transformations) {
+            ValidationResult impossibleResult = validateImpossibleOperations(transform, globalObjList);
+            errors.addAll(impossibleResult.getErrors());
+            warnings.addAll(impossibleResult.getWarnings());
+        }
+        
+        // Check for ADD transformations that might create too many objects
+        long addCount = transformations.stream()
+            .filter(t -> t.getType() == ObjectTransformation.TransformationType.ADD)
+            .count();
+        
+        if (addCount > 100) {
+            warnings.add("Creating " + addCount + " new objects - this may impact performance");
+        } else if (addCount > 500) {
+            errors.add("Attempting to create " + addCount + " objects - this exceeds recommended limits");
+        }
+        
+        return new ValidationResult(errors.isEmpty(), errors, warnings);
+    }
+    
+    /**
+     * Validates transformations on a single object for conflicts.
+     */
+    private static ValidationResult validateTransformationConflicts(int objectId, 
+                                                                  List<ObjectTransformation> transforms,
+                                                                  Map<Integer, AbstractObj> globalObjList) {
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        
+        AbstractObj obj = globalObjList.get(objectId);
+        if (obj == null) {
+            errors.add("Object " + objectId + " not found for transformation validation");
+            return new ValidationResult(false, errors, warnings);
+        }
+        
+        // Check for conflicting position transformations
+        boolean hasTranslate = false;
+        boolean hasSetPosition = false;
+        boolean hasRotate = false;
+        boolean hasSetRotation = false;
+        boolean hasScale = false;
+        boolean hasSetScale = false;
+        
+        for (ObjectTransformation transform : transforms) {
+            switch (transform.getType()) {
+                case TRANSLATE:
+                    hasTranslate = true;
+                    break;
+                case SET_POSITION:
+                    hasSetPosition = true;
+                    break;
+                case ROTATE:
+                    hasRotate = true;
+                    break;
+                case SET_ROTATION:
+                    hasSetRotation = true;
+                    break;
+                case SCALE:
+                    hasScale = true;
+                    break;
+                case SET_SCALE:
+                    hasSetScale = true;
+                    break;
+            }
+        }
+        
+        // Warn about potentially conflicting operations
+        if (hasTranslate && hasSetPosition) {
+            warnings.add("Object " + obj.name + " has both translate and set position operations - final position may be unexpected");
+        }
+        
+        if (hasRotate && hasSetRotation) {
+            warnings.add("Object " + obj.name + " has both rotate and set rotation operations - final rotation may be unexpected");
+        }
+        
+        if (hasScale && hasSetScale) {
+            warnings.add("Object " + obj.name + " has both scale and set scale operations - final scale may be unexpected");
+        }
+        
+        return new ValidationResult(errors.isEmpty(), errors, warnings);
+    }
+    
+    /**
+     * Validates for impossible operations that cannot be performed.
+     */
+    private static ValidationResult validateImpossibleOperations(ObjectTransformation transform,
+                                                               Map<Integer, AbstractObj> globalObjList) {
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        
+        if (transform.getType() == ObjectTransformation.TransformationType.ADD) {
+            // Validate ADD operations
+            String objectType = transform.getAddObjectType();
+            if (objectType == null || objectType.trim().isEmpty()) {
+                errors.add("Cannot add object with empty or null type");
+            } else {
+                // Check if object type is known/valid
+                if (!isValidObjectType(objectType)) {
+                    warnings.add("Object type '" + objectType + "' may not be recognized by the game");
+                }
+            }
+            
+            // Check position validity for new objects
+            Vec3f position = transform.getVectorValue();
+            if (position != null) {
+                if (Math.abs(position.x) > MAX_COORDINATE || 
+                    Math.abs(position.y) > MAX_COORDINATE || 
+                    Math.abs(position.z) > MAX_COORDINATE) {
+                    errors.add("Cannot create object at extreme coordinates: " + formatVector(position));
+                }
+            }
+        } else {
+            // Validate operations on existing objects
+            AbstractObj obj = globalObjList.get(transform.getObjectId());
+            if (obj == null) {
+                errors.add("Cannot transform non-existent object with ID " + transform.getObjectId());
+            } else {
+                // Check if the object can be transformed
+                if (isReadOnlyObject(obj)) {
+                    errors.add("Cannot modify read-only object: " + obj.name);
+                }
+            }
+        }
+        
+        return new ValidationResult(errors.isEmpty(), errors, warnings);
+    }
+    
+    /**
+     * Checks if an object type is valid/recognized.
+     */
+    private static boolean isValidObjectType(String objectType) {
+        if (objectType == null) return false;
+        
+        String lowerType = objectType.toLowerCase();
+        
+        // Common valid object types
+        String[] validTypes = {
+            "coin", "goomba", "koopa", "star", "platform", "block", "pipe", "switch",
+            "enemy", "item", "decoration", "camera", "area", "path", "light", "sound",
+            "powerup", "collectible", "hazard", "npc", "boss", "vehicle", "effect"
+        };
+        
+        for (String validType : validTypes) {
+            if (lowerType.contains(validType)) {
+                return true;
+            }
+        }
+        
+        // If not in common types, it might still be valid but warn the user
+        return false;
+    }
+    
+    /**
+     * Checks if an object is read-only and cannot be modified.
+     */
+    private static boolean isReadOnlyObject(AbstractObj obj) {
+        if (obj == null) return true;
+        
+        // Some objects might be read-only based on their type or properties
+        // This is a placeholder for more sophisticated read-only detection
+        return false;
+    }
+    
+    /**
+     * Formats a vector for display in error messages.
+     */
+    private static String formatVector(Vec3f vector) {
+        return String.format("(%.1f, %.1f, %.1f)", vector.x, vector.y, vector.z);
+    }
+    
+    /**
      * Result of validation operations.
      */
     public static class ValidationResult {
